@@ -1,0 +1,20 @@
+# Build outputs and intermediate files
+bin/
+obj/
+
+# Test and runtime artifacts
+TestResults/
+artifacts/
+logs/
+
+# Local IDE and OS files
+.vs/
+.vscode/
+.idea/
+.DS_Store
+
+# Local configuration and credentials
+*.user
+*.suo
+appsettings.Local.json
+*.Development.json
