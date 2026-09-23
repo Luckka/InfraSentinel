@@ -14,9 +14,12 @@ external infrastructure.
 - human approval remains required for architecture, security, and deployment
   decisions.
 
-InfraSentinel does not currently consume the IAEngine runtime. IAEngine remains a
-separate repository, and its generic runtime composition must be implemented and
-validated before InfraSentinel can become an independent consumer.
+InfraSentinel now contains a local, non-operational consumer proof for the
+IAEngine generic execution host. IAEngine remains a separate repository; the
+consumer uses an overridable local `ProjectReference`, registers only local fake
+components, and writes state under project-specific `.ai-runs-infrasentinel` and
+`.ai-state-infrasentinel` names. This does not enable scanning, AWS access,
+external providers, or production infrastructure access.
 
 ## Roadmap
 
@@ -24,7 +27,7 @@ validated before InfraSentinel can become an independent consumer.
 2. Propose and approve deterministic check contracts using synthetic fixtures.
 3. Add an architecture-defense and decision-record gate before consequential work.
 4. Add narrowly scoped adapters only after a human-approved security review.
-5. Evaluate IAEngine integration only after its generic composition contract exists.
+5. Stabilize and review the local IAEngine host contract before distribution.
 
 No item above authorizes testing against systems that InfraSentinel does not own.
 

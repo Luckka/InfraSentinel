@@ -6,5 +6,5 @@ namespace InfraSentinel.Core;
 public static class BootstrapMarker
 {
     public const string ProjectName = "InfraSentinel";
-    public const string RuntimeIntegrationStatus = "Not integrated with IAEngine";
+    public const string RuntimeIntegrationStatus = "Local IAEngine host integration";
 }
