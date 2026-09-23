@@ -1,4 +1,7 @@
 using OnlineOs.AiOrchestrator.Configuration;
+using OnlineOs.AiOrchestrator.Hosting;
+using RoadmapMilestoneDefinition = OnlineOs.AiOrchestrator.Roadmap.MilestoneDefinition;
+using RoadmapTaskDefinition = OnlineOs.AiOrchestrator.Roadmap.RoadmapTaskDefinition;
 
 namespace InfraSentinel.Core;
 
@@ -9,7 +12,7 @@ namespace InfraSentinel.Core;
 public sealed record IAEngineConsumerConfiguration(string WorkspaceRoot)
 {
     public const string ProjectId = "infra-sentinel";
-    public const string EngineRevision = "935a0df";
+    public const string EngineRevision = "699dfe7";
     public string RunsDirectory => ".ai-runs-infrasentinel";
     public string StateDirectory => ".ai-state-infrasentinel";
 
@@ -26,7 +29,7 @@ public sealed record IAEngineConsumerConfiguration(string WorkspaceRoot)
         ["local-policy"],
         ["validation"]);
 
-    public AppOptions CreateOptions() => new()
+    public AppOptions CreateOptions(int engineeringRemediationCycles = 5) => new()
     {
         Project = new ProjectProfileOptions
         {
@@ -44,8 +47,30 @@ public sealed record IAEngineConsumerConfiguration(string WorkspaceRoot)
         Orchestrator = new OrchestratorOptions
         {
             RunsDirectory = RunsDirectory,
-            ProcessTimeoutSeconds = 30
+            ProcessTimeoutSeconds = 30,
+            EngineeringRemediationCycles = engineeringRemediationCycles
         },
         ReviewPolicy = new ReviewPolicyOptions()
     };
+}
+
+public sealed class InfraSentinelMilestoneSource : IEngineMilestoneSource
+{
+    public Task<RoadmapMilestoneDefinition> LoadMilestoneAsync(string milestoneId, CancellationToken cancellationToken = default)
+    {
+        if (!string.Equals(milestoneId, "sentinel-bootstrap-validation", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"Synthetic milestone '{milestoneId}' was not found.");
+
+        return Task.FromResult(new RoadmapMilestoneDefinition
+        {
+            Id = "sentinel-bootstrap-validation",
+            Title = "Synthetic InfraSentinel bootstrap validation",
+            Tasks =
+            [
+                new RoadmapTaskDefinition { Id = "SENTINEL-001", Title = "Load synthetic infrastructure fixture", Description = "Load only a local synthetic fixture." },
+                new RoadmapTaskDefinition { Id = "SENTINEL-002", Title = "Execute deterministic local validator", Description = "Run a fake deterministic validator.", DependsOn = ["SENTINEL-001"] },
+                new RoadmapTaskDefinition { Id = "SENTINEL-003", Title = "Produce explainable result", Description = "Record a local explainable result.", DependsOn = ["SENTINEL-002"] }
+            ]
+        });
+    }
 }

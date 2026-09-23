@@ -15,11 +15,12 @@ external infrastructure.
   decisions.
 
 InfraSentinel now contains a local, non-operational consumer proof for the
-IAEngine generic execution host. IAEngine remains a separate repository; the
-consumer uses an overridable local `ProjectReference`, registers only local fake
-components, and writes state under project-specific `.ai-runs-infrasentinel` and
-`.ai-state-infrasentinel` names. This does not enable scanning, AWS access,
-external providers, or production infrastructure access.
+IAEngine generic execution host, including a three-task synthetic milestone.
+IAEngine remains a separate repository; the consumer uses an overridable local
+`ProjectReference`, registers only local fake components, and writes state under
+project-specific `.ai-runs-infrasentinel` and `.ai-state-infrasentinel` names.
+This does not enable scanning, AWS access, external providers, or production
+infrastructure access.
 
 ## Roadmap
 
@@ -27,7 +28,7 @@ external providers, or production infrastructure access.
 2. Propose and approve deterministic check contracts using synthetic fixtures.
 3. Add an architecture-defense and decision-record gate before consequential work.
 4. Add narrowly scoped adapters only after a human-approved security review.
-5. Stabilize and review the local IAEngine host contract before distribution.
+5. Stabilize and review the local IAEngine host and milestone contracts before distribution.
 
 No item above authorizes testing against systems that InfraSentinel does not own.
 
