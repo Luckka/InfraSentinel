@@ -1,4 +1,5 @@
 using InfraSentinel.Core;
+using InfraSentinel.Core.Validation;
 using OnlineOs.AiOrchestrator.Abstractions;
 using OnlineOs.AiOrchestrator.Configuration;
 using OnlineOs.AiOrchestrator.Hosting;
@@ -18,7 +19,7 @@ public sealed class IAEngineMilestoneTests
         try
         {
             var configuration = new IAEngineConsumerConfiguration(workspace.FullName);
-            var host = CreateHost(configuration, workspace.FullName);
+            var host = CreateHost(configuration, workspace.FullName, fixture: SafeFixture());
 
             var completed = await host.RunMilestoneAsync("sentinel-bootstrap-validation");
             var approved = await host.ApproveMilestoneAsync("sentinel-bootstrap-validation");
@@ -47,7 +48,7 @@ public sealed class IAEngineMilestoneTests
         try
         {
             var configuration = new IAEngineConsumerConfiguration(workspace.FullName);
-            var host = CreateHost(configuration, workspace.FullName, reviewPasses: false);
+            var host = CreateHost(configuration, workspace.FullName, fixture: UnsafeFixture(), validationRemediationCycles: 0);
 
             var result = await host.RunMilestoneAsync("sentinel-bootstrap-validation");
 
@@ -56,6 +57,8 @@ public sealed class IAEngineMilestoneTests
             Assert.True(result.RequiresHumanApproval);
             Assert.Equal(0, result.CompletedTasks);
             Assert.True(File.Exists(Path.Combine(workspace.FullName, configuration.StateDirectory, "roadmap-state.json")));
+            var validationArtifacts = Directory.EnumerateFiles(Path.Combine(workspace.FullName, configuration.RunsDirectory), "validation-*.json", SearchOption.AllDirectories);
+            Assert.Contains(validationArtifacts, artifact => File.ReadAllText(artifact).Contains("explicit-insecure-configuration", StringComparison.Ordinal));
         }
         finally
         {
@@ -63,28 +66,44 @@ public sealed class IAEngineMilestoneTests
         }
     }
 
-    private static EngineHost CreateHost(IAEngineConsumerConfiguration configuration, string workspace, bool reviewPasses = true)
+    private static EngineHost CreateHost(
+        IAEngineConsumerConfiguration configuration,
+        string workspace,
+        bool reviewPasses = true,
+        SyntheticInfrastructureFixture? fixture = null,
+        int validationRemediationCycles = 5)
     {
+        fixture ??= SafeFixture();
         return EngineHost.Create(new EngineHostContext
         {
             ProjectId = IAEngineConsumerConfiguration.ProjectId,
             WorkspaceRoot = workspace,
-            Options = configuration.CreateOptions(reviewPasses ? 5 : 0),
+            Options = configuration.CreateOptions(reviewPasses ? 5 : 0, validationRemediationCycles),
             Composition = configuration.Composition,
             Components = new("local-router", "local-implementation", "local-review", "validation"),
             RegisterComponents = builder => builder
                 .RegisterProvider<ITaskRouter>("local-router", () => new LocalRouter())
                 .RegisterProvider<IImplementationAgent>("local-implementation", () => new LocalImplementation())
                 .RegisterProvider<IReviewAgent>("local-review", () => new LocalReview(reviewPasses))
-                .RegisterValidator<IValidationRunner>("local-validator", () => new LocalValidation())
+                .RegisterValidator<IValidationRunner>("local-validator", () => new InfrastructureValidationRunner(new DeterministicInfrastructureValidator(), fixture))
                 .RegisterPolicy("local-policy", () => new LocalPolicy())
-                .RegisterCapability<IValidationRunner>("validation", () => new LocalValidation()),
+                .RegisterCapability<IValidationRunner>("validation", () => new InfrastructureValidationRunner(new DeterministicInfrastructureValidator(), fixture)),
             RunStore = new RunStore(workspace, configuration.RunsDirectory),
             Git = new LocalGit(workspace),
             MilestoneSource = new InfraSentinelMilestoneSource(),
             MilestoneStateDirectory = configuration.StateDirectory
         });
     }
+
+    private static SyntheticInfrastructureFixture SafeFixture() => new(
+        [new("fixture-network", "network")],
+        ["minimum-policy"],
+        ["minimum-policy"]);
+
+    private static SyntheticInfrastructureFixture UnsafeFixture() => new(
+        [new("fixture-network", "network", ExplicitlyInsecure: true)],
+        ["minimum-policy"],
+        []);
 
     private sealed class LocalRouter : ITaskRouter
     {

@@ -29,7 +29,7 @@ public sealed record IAEngineConsumerConfiguration(string WorkspaceRoot)
         ["local-policy"],
         ["validation"]);
 
-    public AppOptions CreateOptions(int engineeringRemediationCycles = 5) => new()
+    public AppOptions CreateOptions(int engineeringRemediationCycles = 5, int validationRemediationCycles = 5) => new()
     {
         Project = new ProjectProfileOptions
         {
@@ -48,7 +48,8 @@ public sealed record IAEngineConsumerConfiguration(string WorkspaceRoot)
         {
             RunsDirectory = RunsDirectory,
             ProcessTimeoutSeconds = 30,
-            EngineeringRemediationCycles = engineeringRemediationCycles
+            EngineeringRemediationCycles = engineeringRemediationCycles,
+            DeterministicValidationRemediationCycles = validationRemediationCycles
         },
         ReviewPolicy = new ReviewPolicyOptions()
     };
