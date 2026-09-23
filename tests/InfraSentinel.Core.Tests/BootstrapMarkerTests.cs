@@ -6,9 +6,9 @@ namespace InfraSentinel.Core.Tests;
 public sealed class BootstrapMarkerTests
 {
     [Fact]
-    public void BootstrapIdentifiesProjectAndDefersEngineIntegration()
+    public void BootstrapIdentifiesProjectAndLocalEngineIntegration()
     {
         Assert.Equal("InfraSentinel", BootstrapMarker.ProjectName);
-        Assert.Equal("Not integrated with IAEngine", BootstrapMarker.RuntimeIntegrationStatus);
+        Assert.Equal("Local IAEngine host integration", BootstrapMarker.RuntimeIntegrationStatus);
     }
 }

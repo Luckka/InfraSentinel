@@ -1,0 +1,13 @@
+{
+  "consumer": "InfraSentinel",
+  "engineRepository": "../AI-ENGINEERING-ENGINE",
+  "engineRevision": "935a0df",
+  "referenceMode": "local-project-reference",
+  "providers": ["local-router", "local-implementation", "local-review"],
+  "validators": ["local-validator"],
+  "policies": ["local-policy"],
+  "capabilities": ["validation"],
+  "runsDirectory": ".ai-runs-infrasentinel",
+  "stateDirectory": ".ai-state-infrasentinel",
+  "externalProvidersExecuted": false
+}
