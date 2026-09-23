@@ -1,7 +1,7 @@
 {
   "consumer": "InfraSentinel",
   "engineRepository": "../AI-ENGINEERING-ENGINE",
-  "engineRevision": "935a0df",
+  "engineRevision": "699dfe7",
   "referenceMode": "local-project-reference",
   "providers": ["local-router", "local-implementation", "local-review"],
   "validators": ["local-validator"],
@@ -9,5 +9,6 @@
   "capabilities": ["validation"],
   "runsDirectory": ".ai-runs-infrasentinel",
   "stateDirectory": ".ai-state-infrasentinel",
-  "externalProvidersExecuted": false
+  "externalProvidersExecuted": false,
+  "milestoneSource": "sentinel-bootstrap-validation"
 }
