@@ -1,8 +1,10 @@
 {
   "consumer": "InfraSentinel",
   "engineRepository": "../AI-ENGINEERING-ENGINE",
-  "engineRevision": "699dfe7",
-  "referenceMode": "local-project-reference",
+  "engineRevision": "845197f",
+  "referenceMode": "local-core-project-reference",
+  "projectProperty": "IAEngineCoreProject",
+  "projectPath": "../AI-ENGINEERING-ENGINE/src/IAEngine.Core/IAEngine.Core.csproj",
   "providers": ["local-router", "local-implementation", "local-review"],
   "validators": ["local-validator"],
   "policies": ["local-policy"],
