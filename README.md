@@ -19,8 +19,9 @@ IAEngine generic execution host, including a three-task synthetic milestone.
 IAEngine remains a separate repository; the consumer uses an overridable local
 `ProjectReference`, registers only local fake components, and writes state under
 project-specific `.ai-runs-infrasentinel` and `.ai-state-infrasentinel` names.
-This does not enable scanning, AWS access, external providers, or production
-infrastructure access.
+It also contains a local Architecture Defense Gate for synthetic decision
+fixtures. This does not enable scanning, AWS access, external providers, or
+production infrastructure access.
 
 ## Roadmap
 
