@@ -1,5 +1,6 @@
 using OnlineOs.AiOrchestrator.Configuration;
 using OnlineOs.AiOrchestrator.Hosting;
+using InfraSentinel.Core.Architecture;
 using RoadmapMilestoneDefinition = OnlineOs.AiOrchestrator.Roadmap.MilestoneDefinition;
 using RoadmapTaskDefinition = OnlineOs.AiOrchestrator.Roadmap.RoadmapTaskDefinition;
 
@@ -15,6 +16,10 @@ public sealed record IAEngineConsumerConfiguration(string WorkspaceRoot)
     public const string EngineRevision = "699dfe7";
     public string RunsDirectory => ".ai-runs-infrasentinel";
     public string StateDirectory => ".ai-state-infrasentinel";
+    public string ArchitectureDefenseArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "architecture-defense.json");
+
+    public ArchitectureDefenseValidationRunner CreateArchitectureDefenseRunner(ArchitectureDecisionFixture fixture)
+        => new(new ArchitectureDefenseValidator(), fixture, ArchitectureDefenseArtifactPath);
 
     public EngineCompositionPlan Composition => new(
         ProjectId,
@@ -60,7 +65,21 @@ public sealed class InfraSentinelMilestoneSource : IEngineMilestoneSource
     public Task<RoadmapMilestoneDefinition> LoadMilestoneAsync(string milestoneId, CancellationToken cancellationToken = default)
     {
         if (!string.Equals(milestoneId, "sentinel-bootstrap-validation", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException($"Synthetic milestone '{milestoneId}' was not found.");
+        {
+            if (!string.Equals(milestoneId, "architecture-defense-validation", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException($"Synthetic milestone '{milestoneId}' was not found.");
+
+            return Task.FromResult(new RoadmapMilestoneDefinition
+            {
+                Id = "architecture-defense-validation",
+                Title = "InfraSentinel architecture defense validation",
+                Tasks =
+                [
+                    new RoadmapTaskDefinition { Id = "ARCH-DEFENSE-001", Title = "Evaluate architecture decision fixture", Description = "Evaluate one local architecture decision using deterministic defense rules." },
+                    new RoadmapTaskDefinition { Id = "ARCH-DEFENSE-002", Title = "Persist explainable architecture evidence", Description = "Persist architecture-defense.json under the InfraSentinel run directory.", DependsOn = ["ARCH-DEFENSE-001"] }
+                ]
+            });
+        }
 
         return Task.FromResult(new RoadmapMilestoneDefinition
         {
