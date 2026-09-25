@@ -30,7 +30,10 @@ public sealed class ArchitectureDefenseValidationRunner(
             evaluation.RulesEvaluated,
             evaluation.RulesPassed,
             evaluation.Findings,
-            evaluation.Findings.Select(x => x.Severity).Distinct().ToArray(),
+            evaluation.Findings.Select(x => x.Severity)
+                .Append(fixture.Decisions[0].Severity)
+                .Distinct()
+                .ToArray(),
             evaluation.Justification,
             evaluation.Status,
             evaluation.RequiresHumanApproval);

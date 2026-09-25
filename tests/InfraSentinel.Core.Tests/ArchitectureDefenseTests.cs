@@ -122,6 +122,7 @@ public sealed class ArchitectureDefenseTests
         var json = await File.ReadAllTextAsync(configuration.ArchitectureDefenseArtifactPath);
         Assert.Contains("decision-001", json, StringComparison.Ordinal);
         Assert.Contains("rulesEvaluated", json, StringComparison.Ordinal);
+        Assert.Contains("high", json, StringComparison.OrdinalIgnoreCase);
         Assert.False(Directory.Exists(Path.Combine(workspace.Path, ".ai-runs")));
         Assert.True(File.Exists(Path.Combine(workspace.Path, configuration.RunsDirectory, "architecture-defense.json")));
     }
