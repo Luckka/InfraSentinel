@@ -229,6 +229,9 @@ public sealed class ResilienceContractTests
         var approved = await host.ApproveMilestoneAsync("resilience-contract-validation");
         Assert.Equal(MilestoneRuntimeStatus.Approved, approved.Status);
         Assert.True(File.Exists(configuration.ResilienceContractArtifactPath));
+        Assert.True(Directory.Exists(Path.Combine(workspace.Path, configuration.StateDirectory)));
+        Assert.False(Directory.Exists(Path.Combine(workspace.Path, ".ai-runs")));
+        Assert.False(Directory.Exists(Path.Combine(workspace.Path, ".ai-state")));
     }
 
     [Fact]

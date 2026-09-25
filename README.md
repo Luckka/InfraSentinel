@@ -20,7 +20,8 @@ IAEngine remains a separate repository; the consumer uses an overridable local
 `ProjectReference`, registers only local fake components, and writes state under
 project-specific `.ai-runs-infrasentinel` and `.ai-state-infrasentinel` names.
 It also contains a local Architecture Defense Gate for synthetic decision
-fixtures. This does not enable scanning, AWS access, external providers, or
+fixtures and a local Resilience Contract Gate for synthetic resilience
+declarations. This does not enable scanning, AWS access, external providers, or
 production infrastructure access.
 
 ## Roadmap
