@@ -48,6 +48,17 @@ The `InfrastructureValidationRunner` adapts this report to the IAEngine
 `.ai-runs-infrasentinel` artifacts; the rule and finding types remain owned by
 InfraSentinel.
 
+## M6 local Core consumption
+
+InfraSentinel references `src/IAEngine.Core/IAEngine.Core.csproj` through the
+`IAEngineCoreProject` MSBuild property. It does not reference the compatibility
+executable or `IAEngine.OnlineOSAdapter`. The consumer still owns its validator,
+policies, fakes, milestone source, `.ai-runs-infrasentinel` and
+`.ai-state-infrasentinel` directories.
+
+The boundary is local and reversible. It is not a NuGet package or a published
+distribution contract.
+
 ## Flow through EngineHost
 
 ```text

@@ -16,10 +16,8 @@ implementation. That is not yet a safe technology-neutral package boundary.
 
 ## Decision
 
-Do not change the consumer project in this blocked stage. Keep the
-`ProjectReference`, validators, policies, fakes and project-owned persistence
-unchanged. No package restore or `.nupkg` consumption is claimed.
-
-The next implementation step requires approval of either a dedicated reusable
-Engine assembly or an explicit temporary risk waiver for a monolithic package.
-
+M6 introduces a dedicated local `IAEngine.Core` project without changing to
+`PackageReference`. InfraSentinel consumes that project directly and does not
+reference the executable or OnlineOS adapter. The package decision remains
+deferred until the Core API is stable. No package restore or `.nupkg`
+consumption is claimed.

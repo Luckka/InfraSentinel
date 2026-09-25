@@ -1,6 +1,6 @@
 # InfraSentinel initial roadmap
 
-## Bootstrap — current
+## Bootstrap — curren
 
 - local .NET solution;
 - synthetic-only fixtures;

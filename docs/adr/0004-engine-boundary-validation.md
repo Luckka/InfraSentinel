@@ -11,7 +11,7 @@ this repository.
 
 ## Decision proposed
 
-Keep the current local `ProjectReference` as a reversible development
+Keep a local `ProjectReference` to the generic IAEngine Core as a reversible development
 integration. InfraSentinel provides its own composition, deterministic
 validator, policy, task/milestone source and project-owned persistence paths.
 The IAEngine provides only host, orchestration, state, retry/recovery and
@@ -32,8 +32,7 @@ does not require Flutter, Patrol, ADB, AWS, network access or external agents.
 
 ## Consequences and limitations
 
-This proves the local boundary, but `ProjectReference` is not yet a distribution
-contract. A later milestone must define versioned packaging or another reviewed
-reference mechanism. No production scanning, cloud access or security policy
-engine is implied by this validation.
-
+This proves the local Core boundary, but `ProjectReference` is not yet a
+distribution contract. A later milestone must define versioned packaging or
+another reviewed reference mechanism. No production scanning, cloud access or
+security policy engine is implied by this validation.

@@ -4,11 +4,11 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <IAEngineProject Condition="'$(IAEngineProject)' == ''">$(MSBuildThisFileDirectory)..\..\..\AI-ENGINEERING-ENGINE\OnlineOs.AiOrchestrator.csproj</IAEngineProject>
+    <IAEngineCoreProject Condition="'$(IAEngineCoreProject)' == ''">$(MSBuildThisFileDirectory)..\..\..\AI-ENGINEERING-ENGINE\src\IAEngine.Core\IAEngine.Core.csproj</IAEngineCoreProject>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="$(IAEngineProject)" />
+    <ProjectReference Include="$(IAEngineCoreProject)" />
   </ItemGroup>
 
 </Project>
