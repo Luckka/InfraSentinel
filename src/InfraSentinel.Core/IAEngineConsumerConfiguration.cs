@@ -1,6 +1,7 @@
 using OnlineOs.AiOrchestrator.Configuration;
 using OnlineOs.AiOrchestrator.Hosting;
 using InfraSentinel.Core.Architecture;
+using InfraSentinel.Core.Resilience;
 using RoadmapMilestoneDefinition = OnlineOs.AiOrchestrator.Roadmap.MilestoneDefinition;
 using RoadmapTaskDefinition = OnlineOs.AiOrchestrator.Roadmap.RoadmapTaskDefinition;
 
@@ -17,9 +18,13 @@ public sealed record IAEngineConsumerConfiguration(string WorkspaceRoot)
     public string RunsDirectory => ".ai-runs-infrasentinel";
     public string StateDirectory => ".ai-state-infrasentinel";
     public string ArchitectureDefenseArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "architecture-defense.json");
+    public string ResilienceContractArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "resilience-contract.json");
 
     public ArchitectureDefenseValidationRunner CreateArchitectureDefenseRunner(ArchitectureDecisionFixture fixture)
         => new(new ArchitectureDefenseValidator(), fixture, ArchitectureDefenseArtifactPath);
+
+    public ResilienceValidationRunner CreateResilienceRunner(ResilienceContractFixture fixture)
+        => new(new ResilienceContractValidator(), fixture, ResilienceContractArtifactPath);
 
     public EngineCompositionPlan Composition => new(
         ProjectId,
@@ -64,6 +69,23 @@ public sealed class InfraSentinelMilestoneSource : IEngineMilestoneSource
 {
     public Task<RoadmapMilestoneDefinition> LoadMilestoneAsync(string milestoneId, CancellationToken cancellationToken = default)
     {
+        if (string.Equals(milestoneId, "resilience-contract-validation", StringComparison.OrdinalIgnoreCase))
+        {
+            return Task.FromResult(new RoadmapMilestoneDefinition
+            {
+                Id = "resilience-contract-validation",
+                Title = "InfraSentinel resilience contract validation",
+                Tasks =
+                [
+                    new RoadmapTaskDefinition { Id = "RESILIENCE-001", Title = "Load resilience contract fixture", Description = "Load one local synthetic resilience contract fixture." },
+                    new RoadmapTaskDefinition { Id = "RESILIENCE-002", Title = "Validate timeout and retry policy", Description = "Validate finite timeout, retry classification and bounded backoff.", DependsOn = ["RESILIENCE-001"] },
+                    new RoadmapTaskDefinition { Id = "RESILIENCE-003", Title = "Validate idempotency and recovery", Description = "Validate repeat safety and recovery behavior.", DependsOn = ["RESILIENCE-002"] },
+                    new RoadmapTaskDefinition { Id = "RESILIENCE-004", Title = "Validate observability and failure routing", Description = "Validate signals, error classification and failure destinations.", DependsOn = ["RESILIENCE-003"] },
+                    new RoadmapTaskDefinition { Id = "RESILIENCE-005", Title = "Produce explainable resilience result", Description = "Persist resilience-contract.json under the InfraSentinel run directory.", DependsOn = ["RESILIENCE-004"] }
+                ]
+            });
+        }
+
         if (!string.Equals(milestoneId, "sentinel-bootstrap-validation", StringComparison.OrdinalIgnoreCase))
         {
             if (!string.Equals(milestoneId, "architecture-defense-validation", StringComparison.OrdinalIgnoreCase))
