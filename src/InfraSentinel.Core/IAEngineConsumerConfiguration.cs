@@ -5,6 +5,7 @@ using OnlineOs.AiOrchestrator.Models;
 using IAEngine.Core.Git;
 using InfraSentinel.Core.Architecture;
 using InfraSentinel.Core.Integration;
+using InfraSentinel.Core.Observability;
 using InfraSentinel.Core.Resilience;
 using InfraSentinel.Core.Security;
 using RoadmapMilestoneDefinition = OnlineOs.AiOrchestrator.Roadmap.MilestoneDefinition;
@@ -26,6 +27,7 @@ public sealed record IAEngineConsumerConfiguration(string WorkspaceRoot)
     public string ArchitectureDefenseArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "architecture-defense.json");
     public string ResilienceContractArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "resilience-contract.json");
     public string SecurityInvariantArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "security-invariant-gate.json");
+    public string ObservabilityEvidenceArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "observability-evidence-gate.json");
 
     public InfraSentinelGitCheckpointCoordinator CreateCheckpointCoordinator(IGitService git, IProcessRunner processes)
         => new(git, processes, RunsDirectory);
@@ -44,6 +46,18 @@ public sealed record IAEngineConsumerConfiguration(string WorkspaceRoot)
 
     public SecurityInvariantValidationRunner CreateSecurityRunner(SecurityInvariantFixture fixture)
         => new(new SecurityInvariantValidator(), fixture, SecurityInvariantArtifactPath);
+
+    public ObservabilityEvidenceAggregator CreateEvidenceAggregator(
+        string executionId,
+        string milestoneId,
+        IReadOnlyList<string> taskIds,
+        string fixtureId,
+        string fixtureVersion,
+        string branch)
+        => new(executionId, ProjectId, milestoneId, taskIds, fixtureId, fixtureVersion, EngineRevision, branch);
+
+    public ObservabilityEvidenceWriter CreateEvidenceWriter()
+        => new(ObservabilityEvidenceArtifactPath);
 
     public EngineCompositionPlan Composition => new(
         ProjectId,
@@ -151,6 +165,24 @@ public sealed class InfraSentinelMilestoneSource : IEngineMilestoneSource
 {
     public Task<RoadmapMilestoneDefinition> LoadMilestoneAsync(string milestoneId, CancellationToken cancellationToken = default)
     {
+        if (string.Equals(milestoneId, "sentinel-observability-evidence-gate", StringComparison.OrdinalIgnoreCase))
+        {
+            return Task.FromResult(new RoadmapMilestoneDefinition
+            {
+                Id = "sentinel-observability-evidence-gate",
+                Title = "InfraSentinel observability and evidence gate",
+                Tasks =
+                [
+                    new RoadmapTaskDefinition { Id = "OBS-001", Title = "Initialize evidence context", Description = "Initialize the local evidence aggregator and fixture metadata." },
+                    new RoadmapTaskDefinition { Id = "OBS-002", Title = "Record deterministic validation evidence", Description = "Record validator, rules, findings and severities.", DependsOn = ["OBS-001"] },
+                    new RoadmapTaskDefinition { Id = "OBS-003", Title = "Record retry and remediation evidence", Description = "Record bounded retry and remediation events.", DependsOn = ["OBS-002"] },
+                    new RoadmapTaskDefinition { Id = "OBS-004", Title = "Record review evidence", Description = "Record review outcome and findings.", DependsOn = ["OBS-003"] },
+                    new RoadmapTaskDefinition { Id = "OBS-005", Title = "Validate evidence completeness", Description = "Validate that the evidence is explainable and reproducible.", DependsOn = ["OBS-004"] },
+                    new RoadmapTaskDefinition { Id = "OBS-006", Title = "Execute evidence checkpoint", Description = "Persist evidence and create a semantic checkpoint only after approval.", DependsOn = ["OBS-005"] }
+                ]
+            });
+        }
+
         if (string.Equals(milestoneId, "sentinel-security-invariant-gate", StringComparison.OrdinalIgnoreCase))
         {
             return Task.FromResult(new RoadmapMilestoneDefinition
