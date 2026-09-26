@@ -4,6 +4,7 @@ using OnlineOs.AiOrchestrator.Hosting;
 using OnlineOs.AiOrchestrator.Models;
 using IAEngine.Core.Git;
 using InfraSentinel.Core.Architecture;
+using InfraSentinel.Core.Adapters;
 using InfraSentinel.Core.Integration;
 using InfraSentinel.Core.Observability;
 using InfraSentinel.Core.Resilience;
@@ -28,6 +29,7 @@ public sealed record IAEngineConsumerConfiguration(string WorkspaceRoot)
     public string ResilienceContractArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "resilience-contract.json");
     public string SecurityInvariantArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "security-invariant-gate.json");
     public string ObservabilityEvidenceArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "observability-evidence-gate.json");
+    public string ProjectAdapterArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "project-adapter-boundary.json");
 
     public InfraSentinelGitCheckpointCoordinator CreateCheckpointCoordinator(IGitService git, IProcessRunner processes)
         => new(git, processes, RunsDirectory);
@@ -58,6 +60,12 @@ public sealed record IAEngineConsumerConfiguration(string WorkspaceRoot)
 
     public ObservabilityEvidenceWriter CreateEvidenceWriter()
         => new(ObservabilityEvidenceArtifactPath);
+
+    public IProjectAdapterSelector CreateProjectAdapterSelector()
+        => new ProjectAdapterSelector([new DotNetProjectAdapter(), new NodeProjectAdapter()]);
+
+    public ProjectAdapterArtifactWriter CreateProjectAdapterArtifactWriter()
+        => new(ProjectAdapterArtifactPath);
 
     public EngineCompositionPlan Composition => new(
         ProjectId,
@@ -179,6 +187,26 @@ public sealed class InfraSentinelMilestoneSource : IEngineMilestoneSource
                     new RoadmapTaskDefinition { Id = "OBS-004", Title = "Record review evidence", Description = "Record review outcome and findings.", DependsOn = ["OBS-003"] },
                     new RoadmapTaskDefinition { Id = "OBS-005", Title = "Validate evidence completeness", Description = "Validate that the evidence is explainable and reproducible.", DependsOn = ["OBS-004"] },
                     new RoadmapTaskDefinition { Id = "OBS-006", Title = "Execute evidence checkpoint", Description = "Persist evidence and create a semantic checkpoint only after approval.", DependsOn = ["OBS-005"] }
+                ]
+            });
+        }
+
+        if (string.Equals(milestoneId, "project-adapter-boundary-validation", StringComparison.OrdinalIgnoreCase))
+        {
+            return Task.FromResult(new RoadmapMilestoneDefinition
+            {
+                Id = "project-adapter-boundary-validation",
+                Title = "InfraSentinel project adapter boundary validation",
+                Tasks =
+                [
+                    new RoadmapTaskDefinition { Id = "ADAPTER-001", Title = "Define project adapter contract", Description = "Load a local workspace through the adapter boundary." },
+                    new RoadmapTaskDefinition { Id = "ADAPTER-002", Title = "Create technology-neutral project model", Description = "Produce a neutral model without technology-specific Engine types.", DependsOn = ["ADAPTER-001"] },
+                    new RoadmapTaskDefinition { Id = "ADAPTER-003", Title = "Implement .NET project adapter", Description = "Analyze supported .NET manifests without executing project commands.", DependsOn = ["ADAPTER-002"] },
+                    new RoadmapTaskDefinition { Id = "ADAPTER-004", Title = "Implement Node.js project adapter", Description = "Analyze supported Node manifests without executing project scripts.", DependsOn = ["ADAPTER-003"] },
+                    new RoadmapTaskDefinition { Id = "ADAPTER-005", Title = "Validate adapter selection and isolation", Description = "Verify unsupported workspaces and path/security boundaries.", DependsOn = ["ADAPTER-004"] },
+                    new RoadmapTaskDefinition { Id = "ADAPTER-006", Title = "Integrate adapters with EngineHost", Description = "Execute adapter validation through the existing EngineHost.", DependsOn = ["ADAPTER-005"] },
+                    new RoadmapTaskDefinition { Id = "ADAPTER-007", Title = "Produce adapter evidence artifact", Description = "Persist project-adapter-boundary.json under the Sentinel run directory.", DependsOn = ["ADAPTER-006"] },
+                    new RoadmapTaskDefinition { Id = "ADAPTER-008", Title = "Validate approval and checkpoint behavior", Description = "Require approval before a local checkpoint.", DependsOn = ["ADAPTER-007"] }
                 ]
             });
         }
