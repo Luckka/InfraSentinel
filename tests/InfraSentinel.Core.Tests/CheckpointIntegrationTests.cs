@@ -102,6 +102,22 @@ public sealed class CheckpointIntegrationTests
     }
 
     [Fact]
+    public async Task EngineMilestoneRecoversThroughBoundedValidationRemediation()
+    {
+        using var repository = GitRepository.Create();
+        var configuration = new IAEngineConsumerConfiguration(repository.Root);
+        var processes = new ProcessRunner();
+        var git = new GitService(processes, repository.Root, new GitOptions());
+        var host = CreateHost(configuration, git, processes, new RecoveringValidation(), validationRemediationCycles: 1);
+
+        var result = await host.RunMilestoneAsync("sentinel-engine-controlled-checkpoint");
+
+        Assert.Equal(MilestoneRuntimeStatus.CompleteAwaitingApproval, result.Status);
+        Assert.Null(result.Checkpoint);
+        Assert.Null(repository.ReadCommitSubject());
+    }
+
+    [Fact]
     public void SentinelConsumesCoreAndNotTheOnlineOsAdapter()
     {
         var references = typeof(InfraSentinelGitCheckpointCoordinator).Assembly.GetReferencedAssemblies();
@@ -197,6 +213,20 @@ public sealed class CheckpointIntegrationTests
     }
 
     private sealed record LocalPolicy(string Name = "local-policy") : IProjectPolicyComponent;
+
+    private sealed class RecoveringValidation : IValidationRunner
+    {
+        private int attempts;
+
+        public Task<IReadOnlyList<ValidationResult>> RunAsync(CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var passed = Interlocked.Increment(ref attempts) > 1;
+            return Task.FromResult<IReadOnlyList<ValidationResult>>([
+                new("CheckpointRecovery", true, new ProcessResult("local-recovery-validation", passed ? 0 : 1, "", "", TimeSpan.Zero), passed ? ValidationStatus.Pass : ValidationStatus.Fail)
+            ]);
+        }
+    }
 
     private sealed class GitRepository : IDisposable
     {
