@@ -96,4 +96,6 @@ The current generic contract exposes read-only `IGitService` operations, so the
 Sentinel coordinator uses the generic process runner for the two permitted local
 write commands. A future generic API may introduce a dedicated local commit
 operation if multiple consumers need the same mechanism. That is intentionally
-not added in M11-C.
+not added in M11-C. Validation failures remain governed by the existing Engine
+remediation/continue behavior; this milestone does not add a second recovery
+state machine or alter that behavior.

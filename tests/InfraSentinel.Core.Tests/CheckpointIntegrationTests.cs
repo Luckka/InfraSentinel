@@ -110,10 +110,15 @@ public sealed class CheckpointIntegrationTests
         Assert.DoesNotContain(references, reference => reference.Name == "IAEngine.OnlineOSAdapter");
     }
 
-    private static EngineHost CreateHost(IAEngineConsumerConfiguration configuration, IGitService git, IProcessRunner processes)
+    private static EngineHost CreateHost(
+        IAEngineConsumerConfiguration configuration,
+        IGitService git,
+        IProcessRunner processes,
+        IValidationRunner? validationOverride = null,
+        int validationRemediationCycles = 5)
     {
         var safeFixture = new SyntheticInfrastructureFixture([new("checkpoint-resource", "document")], ["minimum-policy"], ["minimum-policy"]);
-        var validation = new InfrastructureValidationRunner(new DeterministicInfrastructureValidator(), safeFixture);
+        var validation = validationOverride ?? new InfrastructureValidationRunner(new DeterministicInfrastructureValidator(), safeFixture);
         var requestSource = configuration.CreateCheckpointRequestSource(
             "feature/sentinel-checkpoint",
             ["fixture.txt"],
@@ -122,7 +127,7 @@ public sealed class CheckpointIntegrationTests
         {
             ProjectId = IAEngineConsumerConfiguration.ProjectId,
             WorkspaceRoot = configuration.WorkspaceRoot,
-            Options = configuration.CreateOptions(),
+            Options = configuration.CreateOptions(validationRemediationCycles: validationRemediationCycles),
             Composition = configuration.Composition,
             Components = new("local-router", "local-implementation", "local-review", "validation"),
             RegisterComponents = builder => builder
