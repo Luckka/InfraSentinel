@@ -1,9 +1,14 @@
 using OnlineOs.AiOrchestrator.Configuration;
+using OnlineOs.AiOrchestrator.Abstractions;
 using OnlineOs.AiOrchestrator.Hosting;
+using OnlineOs.AiOrchestrator.Models;
+using IAEngine.Core.Git;
 using InfraSentinel.Core.Architecture;
+using InfraSentinel.Core.Integration;
 using InfraSentinel.Core.Resilience;
 using RoadmapMilestoneDefinition = OnlineOs.AiOrchestrator.Roadmap.MilestoneDefinition;
 using RoadmapTaskDefinition = OnlineOs.AiOrchestrator.Roadmap.RoadmapTaskDefinition;
+using MilestoneRuntimeStatus = OnlineOs.AiOrchestrator.Roadmap.MilestoneRuntimeStatus;
 
 namespace InfraSentinel.Core;
 
@@ -14,11 +19,20 @@ namespace InfraSentinel.Core;
 public sealed record IAEngineConsumerConfiguration(string WorkspaceRoot)
 {
     public const string ProjectId = "infra-sentinel";
-    public const string EngineRevision = "699dfe7";
+    public const string EngineRevision = "a7b387e";
     public string RunsDirectory => ".ai-runs-infrasentinel";
     public string StateDirectory => ".ai-state-infrasentinel";
     public string ArchitectureDefenseArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "architecture-defense.json");
     public string ResilienceContractArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "resilience-contract.json");
+
+    public InfraSentinelGitCheckpointCoordinator CreateCheckpointCoordinator(IGitService git, IProcessRunner processes)
+        => new(git, processes, RunsDirectory);
+
+    public InfraSentinelCheckpointRequestSource CreateCheckpointRequestSource(
+        string branch,
+        IReadOnlyList<string> expectedFiles,
+        string commitMessage)
+        => new(WorkspaceRoot, branch, expectedFiles, commitMessage);
 
     public ArchitectureDefenseValidationRunner CreateArchitectureDefenseRunner(ArchitectureDecisionFixture fixture)
         => new(new ArchitectureDefenseValidator(), fixture, ArchitectureDefenseArtifactPath);
@@ -65,10 +79,91 @@ public sealed record IAEngineConsumerConfiguration(string WorkspaceRoot)
     };
 }
 
+public sealed class InfraSentinelCheckpointRequestSource(
+    string workspaceRoot,
+    string branch,
+    IReadOnlyList<string> expectedFiles,
+    string commitMessage) : IGitCheckpointRequestSource
+{
+    public GitCheckpointRequest CreateForTask(RunRecord run)
+        => Create(
+            GitCheckpointScope.Task,
+            run.MilestoneId,
+            run.MilestoneTaskId ?? run.Task.Id,
+            run.State == WorkflowState.Approved,
+            run.State == WorkflowState.Approved,
+            run.State == WorkflowState.Approved,
+            run.State == WorkflowState.Approved,
+            false);
+
+    public GitCheckpointRequest CreateForMilestone(string milestoneId, EngineMilestoneExecutionResult result)
+        => Create(
+            GitCheckpointScope.Milestone,
+            milestoneId,
+            milestoneId,
+            result.Status == MilestoneRuntimeStatus.Approved,
+            result.Status == MilestoneRuntimeStatus.Approved,
+            result.Status == MilestoneRuntimeStatus.Approved,
+            result.Status == MilestoneRuntimeStatus.Approved,
+            result.Status == MilestoneRuntimeStatus.Approved);
+
+    private GitCheckpointRequest Create(
+        GitCheckpointScope scope,
+        string? milestoneId,
+        string taskId,
+        bool validationPassed,
+        bool reviewPassed,
+        bool remediationCompleted,
+        bool taskCompleted,
+        bool milestoneCompleted)
+        => new(
+            IAEngineConsumerConfiguration.ProjectId,
+            workspaceRoot,
+            scope,
+            milestoneId,
+            taskId,
+            branch,
+            commitMessage,
+            GitCheckpointState.Approved,
+            validationPassed,
+            reviewPassed,
+            remediationCompleted,
+            taskCompleted,
+            milestoneCompleted,
+            true,
+            true,
+            true,
+            expectedFiles.Count > 0,
+            expectedFiles,
+            expectedFiles,
+            true,
+            true,
+            false,
+            false);
+}
+
 public sealed class InfraSentinelMilestoneSource : IEngineMilestoneSource
 {
     public Task<RoadmapMilestoneDefinition> LoadMilestoneAsync(string milestoneId, CancellationToken cancellationToken = default)
     {
+        if (string.Equals(milestoneId, "sentinel-engine-controlled-checkpoint", StringComparison.OrdinalIgnoreCase))
+        {
+            return Task.FromResult(new RoadmapMilestoneDefinition
+            {
+                Id = "sentinel-engine-controlled-checkpoint",
+                Title = "InfraSentinel engine-controlled checkpoint",
+                Tasks =
+                [
+                    new RoadmapTaskDefinition { Id = "CHECKPOINT-001", Title = "Load Sentinel workspace", Description = "Load the local Sentinel workspace and checkpoint fixture." },
+                    new RoadmapTaskDefinition { Id = "CHECKPOINT-002", Title = "Execute deterministic validation", Description = "Run the configured deterministic Sentinel validation.", DependsOn = ["CHECKPOINT-001"] },
+                    new RoadmapTaskDefinition { Id = "CHECKPOINT-003", Title = "Execute review decision", Description = "Execute the local review decision.", DependsOn = ["CHECKPOINT-002"] },
+                    new RoadmapTaskDefinition { Id = "CHECKPOINT-004", Title = "Evaluate generic checkpoint policy", Description = "Evaluate IAEngine's generic checkpoint policy.", DependsOn = ["CHECKPOINT-003"] },
+                    new RoadmapTaskDefinition { Id = "CHECKPOINT-005", Title = "Create semantic commit when allowed", Description = "Create a local semantic commit only after all gates pass.", DependsOn = ["CHECKPOINT-004"] },
+                    new RoadmapTaskDefinition { Id = "CHECKPOINT-006", Title = "Persist checkpoint result", Description = "Persist the explainable checkpoint artifact.", DependsOn = ["CHECKPOINT-005"] }
+                ]
+            });
+        }
+
         if (string.Equals(milestoneId, "resilience-contract-validation", StringComparison.OrdinalIgnoreCase))
         {
             return Task.FromResult(new RoadmapMilestoneDefinition

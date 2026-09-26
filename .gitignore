@@ -18,3 +18,7 @@ logs/
 *.suo
 appsettings.Local.json
 *.Development.json
+
+# InfraSentinel runtime state and checkpoint artifacts
+.ai-runs-infrasentinel/
+.ai-state-infrasentinel/
