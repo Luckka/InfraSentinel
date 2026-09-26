@@ -6,6 +6,7 @@ using IAEngine.Core.Git;
 using InfraSentinel.Core.Architecture;
 using InfraSentinel.Core.Integration;
 using InfraSentinel.Core.Resilience;
+using InfraSentinel.Core.Security;
 using RoadmapMilestoneDefinition = OnlineOs.AiOrchestrator.Roadmap.MilestoneDefinition;
 using RoadmapTaskDefinition = OnlineOs.AiOrchestrator.Roadmap.RoadmapTaskDefinition;
 using MilestoneRuntimeStatus = OnlineOs.AiOrchestrator.Roadmap.MilestoneRuntimeStatus;
@@ -24,6 +25,7 @@ public sealed record IAEngineConsumerConfiguration(string WorkspaceRoot)
     public string StateDirectory => ".ai-state-infrasentinel";
     public string ArchitectureDefenseArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "architecture-defense.json");
     public string ResilienceContractArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "resilience-contract.json");
+    public string SecurityInvariantArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "security-invariant-gate.json");
 
     public InfraSentinelGitCheckpointCoordinator CreateCheckpointCoordinator(IGitService git, IProcessRunner processes)
         => new(git, processes, RunsDirectory);
@@ -39,6 +41,9 @@ public sealed record IAEngineConsumerConfiguration(string WorkspaceRoot)
 
     public ResilienceValidationRunner CreateResilienceRunner(ResilienceContractFixture fixture)
         => new(new ResilienceContractValidator(), fixture, ResilienceContractArtifactPath);
+
+    public SecurityInvariantValidationRunner CreateSecurityRunner(SecurityInvariantFixture fixture)
+        => new(new SecurityInvariantValidator(), fixture, SecurityInvariantArtifactPath);
 
     public EngineCompositionPlan Composition => new(
         ProjectId,
@@ -146,6 +151,24 @@ public sealed class InfraSentinelMilestoneSource : IEngineMilestoneSource
 {
     public Task<RoadmapMilestoneDefinition> LoadMilestoneAsync(string milestoneId, CancellationToken cancellationToken = default)
     {
+        if (string.Equals(milestoneId, "sentinel-security-invariant-gate", StringComparison.OrdinalIgnoreCase))
+        {
+            return Task.FromResult(new RoadmapMilestoneDefinition
+            {
+                Id = "sentinel-security-invariant-gate",
+                Title = "InfraSentinel security invariant gate",
+                Tasks =
+                [
+                    new RoadmapTaskDefinition { Id = "SECURITY-001", Title = "Define security invariant domain model", Description = "Load the local synthetic security fixture." },
+                    new RoadmapTaskDefinition { Id = "SECURITY-002", Title = "Implement deterministic security validator", Description = "Evaluate security invariants without external services.", DependsOn = ["SECURITY-001"] },
+                    new RoadmapTaskDefinition { Id = "SECURITY-003", Title = "Implement validation runner and artifact", Description = "Persist security-invariant-gate.json in the Sentinel run directory.", DependsOn = ["SECURITY-002"] },
+                    new RoadmapTaskDefinition { Id = "SECURITY-004", Title = "Integrate with EngineHost", Description = "Execute the security validation through the EngineHost workflow.", DependsOn = ["SECURITY-003"] },
+                    new RoadmapTaskDefinition { Id = "SECURITY-005", Title = "Validate approval and HumanRequired scenarios", Description = "Verify approval boundaries and critical finding handling.", DependsOn = ["SECURITY-004"] },
+                    new RoadmapTaskDefinition { Id = "SECURITY-006", Title = "Execute engine-controlled checkpoint", Description = "Request a semantic checkpoint only after all gates pass.", DependsOn = ["SECURITY-005"] }
+                ]
+            });
+        }
+
         if (string.Equals(milestoneId, "sentinel-engine-controlled-checkpoint", StringComparison.OrdinalIgnoreCase))
         {
             return Task.FromResult(new RoadmapMilestoneDefinition
