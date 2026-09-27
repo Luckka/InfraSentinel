@@ -5,6 +5,7 @@ using OnlineOs.AiOrchestrator.Models;
 using IAEngine.Core.Git;
 using InfraSentinel.Core.Architecture;
 using InfraSentinel.Core.Adapters;
+using InfraSentinel.Core.Cloud;
 using InfraSentinel.Core.Integration;
 using InfraSentinel.Core.IaC;
 using InfraSentinel.Core.Observability;
@@ -23,7 +24,7 @@ namespace InfraSentinel.Core;
 public sealed record IAEngineConsumerConfiguration(string WorkspaceRoot)
 {
     public const string ProjectId = "infra-sentinel";
-    public const string EngineRevision = "a7b387e";
+    public const string EngineRevision = "501d0b9";
     public string RunsDirectory => ".ai-runs-infrasentinel";
     public string StateDirectory => ".ai-state-infrasentinel";
     public string ArchitectureDefenseArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "architecture-defense.json");
@@ -32,6 +33,7 @@ public sealed record IAEngineConsumerConfiguration(string WorkspaceRoot)
     public string ObservabilityEvidenceArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "observability-evidence-gate.json");
     public string ProjectAdapterArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "project-adapter-boundary.json");
     public string TerraformStaticAnalysisArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "terraform-static-analysis.json");
+    public string CloudObservationArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "cloud-observation.json");
 
     public InfraSentinelGitCheckpointCoordinator CreateCheckpointCoordinator(IGitService git, IProcessRunner processes)
         => new(git, processes, RunsDirectory);
@@ -71,6 +73,9 @@ public sealed record IAEngineConsumerConfiguration(string WorkspaceRoot)
 
     public TerraformAnalysisArtifactWriter CreateTerraformArtifactWriter()
         => new(TerraformStaticAnalysisArtifactPath);
+
+    public CloudObservationArtifactWriter CreateCloudObservationArtifactWriter()
+        => new(CloudObservationArtifactPath);
 
     public EngineCompositionPlan Composition => new(
         ProjectId,
@@ -233,6 +238,29 @@ public sealed class InfraSentinelMilestoneSource : IEngineMilestoneSource
                     new RoadmapTaskDefinition { Id = "IAC-007", Title = "Integrate with EngineHost", Description = "Execute IaC analysis through the existing EngineHost.", DependsOn = ["IAC-006"] },
                     new RoadmapTaskDefinition { Id = "IAC-008", Title = "Persist evidence artifact", Description = "Persist terraform-static-analysis.json under the Sentinel run directory.", DependsOn = ["IAC-007"] },
                     new RoadmapTaskDefinition { Id = "IAC-009", Title = "Validate approval and checkpoint blocking", Description = "Require explicit approval and preserve checkpoint boundaries.", DependsOn = ["IAC-008"] }
+                ]
+            });
+        }
+
+        if (string.Equals(milestoneId, "read-only-cloud-observation-validation", StringComparison.OrdinalIgnoreCase))
+        {
+            return Task.FromResult(new RoadmapMilestoneDefinition
+            {
+                Id = "read-only-cloud-observation-validation",
+                Title = "InfraSentinel cloud observation contract",
+                Tasks =
+                [
+                    new RoadmapTaskDefinition { Id = "CLOUD-001", Title = "Define cloud observation contracts", Description = "Load the local observation request and scope." },
+                    new RoadmapTaskDefinition { Id = "CLOUD-002", Title = "Create neutral cloud snapshot model", Description = "Represent the synthetic cloud snapshot without credentials.", DependsOn = ["CLOUD-001"] },
+                    new RoadmapTaskDefinition { Id = "CLOUD-003", Title = "Implement synthetic observation provider", Description = "Collect a controlled local snapshot without external calls.", DependsOn = ["CLOUD-002"] },
+                    new RoadmapTaskDefinition { Id = "CLOUD-004", Title = "Define MCP read-only boundary", Description = "Use only the approved conceptual read-only tool set.", DependsOn = ["CLOUD-003"] },
+                    new RoadmapTaskDefinition { Id = "CLOUD-005", Title = "Implement synthetic MCP client", Description = "Record deterministic synthetic tool evidence.", DependsOn = ["CLOUD-004"] },
+                    new RoadmapTaskDefinition { Id = "CLOUD-006", Title = "Compare IaC model with cloud snapshot", Description = "Evaluate declared versus observed state.", DependsOn = ["CLOUD-005"] },
+                    new RoadmapTaskDefinition { Id = "CLOUD-007", Title = "Validate safe and divergent snapshots", Description = "Evaluate compatible and correctable synthetic snapshots.", DependsOn = ["CLOUD-006"] },
+                    new RoadmapTaskDefinition { Id = "CLOUD-008", Title = "Validate critical and unknown snapshots", Description = "Preserve human-required and unknown outcomes.", DependsOn = ["CLOUD-007"] },
+                    new RoadmapTaskDefinition { Id = "CLOUD-009", Title = "Integrate with EngineHost", Description = "Execute observation through the existing EngineHost.", DependsOn = ["CLOUD-008"] },
+                    new RoadmapTaskDefinition { Id = "CLOUD-010", Title = "Persist observation evidence", Description = "Persist cloud-observation.json under the Sentinel run directory.", DependsOn = ["CLOUD-009"] },
+                    new RoadmapTaskDefinition { Id = "CLOUD-011", Title = "Validate approval and checkpoint blocking", Description = "Require approval and preserve local checkpoint boundaries.", DependsOn = ["CLOUD-010"] }
                 ]
             });
         }
