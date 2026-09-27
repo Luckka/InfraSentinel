@@ -69,7 +69,11 @@ public sealed record ProjectAdapterAnalysis(
     IReadOnlyList<string> Evidence,
     IReadOnlyList<string> Limitations,
     IReadOnlyList<ProjectAdapterFinding> Findings,
-    string Reason);
+    string Reason)
+{
+    /// <summary>Optional consumer-owned model; the generic adapter contract does not interpret it.</summary>
+    public object? DomainModel { get; init; }
+}
 
 public interface IProjectAdapter
 {
