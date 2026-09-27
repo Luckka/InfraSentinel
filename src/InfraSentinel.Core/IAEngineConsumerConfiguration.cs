@@ -6,6 +6,7 @@ using IAEngine.Core.Git;
 using InfraSentinel.Core.Architecture;
 using InfraSentinel.Core.Adapters;
 using InfraSentinel.Core.Integration;
+using InfraSentinel.Core.IaC;
 using InfraSentinel.Core.Observability;
 using InfraSentinel.Core.Resilience;
 using InfraSentinel.Core.Security;
@@ -30,6 +31,7 @@ public sealed record IAEngineConsumerConfiguration(string WorkspaceRoot)
     public string SecurityInvariantArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "security-invariant-gate.json");
     public string ObservabilityEvidenceArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "observability-evidence-gate.json");
     public string ProjectAdapterArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "project-adapter-boundary.json");
+    public string TerraformStaticAnalysisArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "terraform-static-analysis.json");
 
     public InfraSentinelGitCheckpointCoordinator CreateCheckpointCoordinator(IGitService git, IProcessRunner processes)
         => new(git, processes, RunsDirectory);
@@ -62,10 +64,13 @@ public sealed record IAEngineConsumerConfiguration(string WorkspaceRoot)
         => new(ObservabilityEvidenceArtifactPath);
 
     public IProjectAdapterSelector CreateProjectAdapterSelector()
-        => new ProjectAdapterSelector([new DotNetProjectAdapter(), new NodeProjectAdapter()]);
+        => new ProjectAdapterSelector([new DotNetProjectAdapter(), new NodeProjectAdapter(), new TerraformProjectAdapter()]);
 
     public ProjectAdapterArtifactWriter CreateProjectAdapterArtifactWriter()
         => new(ProjectAdapterArtifactPath);
+
+    public TerraformAnalysisArtifactWriter CreateTerraformArtifactWriter()
+        => new(TerraformStaticAnalysisArtifactPath);
 
     public EngineCompositionPlan Composition => new(
         ProjectId,
@@ -207,6 +212,27 @@ public sealed class InfraSentinelMilestoneSource : IEngineMilestoneSource
                     new RoadmapTaskDefinition { Id = "ADAPTER-006", Title = "Integrate adapters with EngineHost", Description = "Execute adapter validation through the existing EngineHost.", DependsOn = ["ADAPTER-005"] },
                     new RoadmapTaskDefinition { Id = "ADAPTER-007", Title = "Produce adapter evidence artifact", Description = "Persist project-adapter-boundary.json under the Sentinel run directory.", DependsOn = ["ADAPTER-006"] },
                     new RoadmapTaskDefinition { Id = "ADAPTER-008", Title = "Validate approval and checkpoint behavior", Description = "Require approval before a local checkpoint.", DependsOn = ["ADAPTER-007"] }
+                ]
+            });
+        }
+
+        if (string.Equals(milestoneId, "terraform-static-analysis-validation", StringComparison.OrdinalIgnoreCase))
+        {
+            return Task.FromResult(new RoadmapMilestoneDefinition
+            {
+                Id = "terraform-static-analysis-validation",
+                Title = "InfraSentinel Terraform static analysis validation",
+                Tasks =
+                [
+                    new RoadmapTaskDefinition { Id = "IAC-001", Title = "Define neutral IaC model", Description = "Load the local Terraform fixture through the neutral IaC boundary." },
+                    new RoadmapTaskDefinition { Id = "IAC-002", Title = "Implement Terraform adapter selection", Description = "Select exactly one local Terraform adapter.", DependsOn = ["IAC-001"] },
+                    new RoadmapTaskDefinition { Id = "IAC-003", Title = "Implement deterministic Terraform analysis", Description = "Parse the documented Terraform subset without executing Terraform.", DependsOn = ["IAC-002"] },
+                    new RoadmapTaskDefinition { Id = "IAC-004", Title = "Add security and resilience IaC rules", Description = "Evaluate declared infrastructure invariants.", DependsOn = ["IAC-003"] },
+                    new RoadmapTaskDefinition { Id = "IAC-005", Title = "Validate safe Terraform fixture", Description = "Validate the safe synthetic fixture.", DependsOn = ["IAC-004"] },
+                    new RoadmapTaskDefinition { Id = "IAC-006", Title = "Validate insecure and critical fixtures", Description = "Validate blocked and human-required synthetic fixtures.", DependsOn = ["IAC-005"] },
+                    new RoadmapTaskDefinition { Id = "IAC-007", Title = "Integrate with EngineHost", Description = "Execute IaC analysis through the existing EngineHost.", DependsOn = ["IAC-006"] },
+                    new RoadmapTaskDefinition { Id = "IAC-008", Title = "Persist evidence artifact", Description = "Persist terraform-static-analysis.json under the Sentinel run directory.", DependsOn = ["IAC-007"] },
+                    new RoadmapTaskDefinition { Id = "IAC-009", Title = "Validate approval and checkpoint blocking", Description = "Require explicit approval and preserve checkpoint boundaries.", DependsOn = ["IAC-008"] }
                 ]
             });
         }
