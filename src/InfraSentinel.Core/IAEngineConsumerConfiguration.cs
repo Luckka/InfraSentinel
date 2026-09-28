@@ -34,6 +34,7 @@ public sealed record IAEngineConsumerConfiguration(string WorkspaceRoot)
     public string ProjectAdapterArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "project-adapter-boundary.json");
     public string TerraformStaticAnalysisArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "terraform-static-analysis.json");
     public string CloudObservationArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "cloud-observation.json");
+    public string CloudProviderSafetyArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "cloud-provider-safety-boundary.json");
 
     public InfraSentinelGitCheckpointCoordinator CreateCheckpointCoordinator(IGitService git, IProcessRunner processes)
         => new(git, processes, RunsDirectory);
@@ -76,6 +77,9 @@ public sealed record IAEngineConsumerConfiguration(string WorkspaceRoot)
 
     public CloudObservationArtifactWriter CreateCloudObservationArtifactWriter()
         => new(CloudObservationArtifactPath);
+
+    public CloudProviderSafetyArtifactWriter CreateCloudProviderSafetyArtifactWriter()
+        => new(CloudProviderSafetyArtifactPath);
 
     public EngineCompositionPlan Composition => new(
         ProjectId,
@@ -261,6 +265,24 @@ public sealed class InfraSentinelMilestoneSource : IEngineMilestoneSource
                     new RoadmapTaskDefinition { Id = "CLOUD-009", Title = "Integrate with EngineHost", Description = "Execute observation through the existing EngineHost.", DependsOn = ["CLOUD-008"] },
                     new RoadmapTaskDefinition { Id = "CLOUD-010", Title = "Persist observation evidence", Description = "Persist cloud-observation.json under the Sentinel run directory.", DependsOn = ["CLOUD-009"] },
                     new RoadmapTaskDefinition { Id = "CLOUD-011", Title = "Validate approval and checkpoint blocking", Description = "Require approval and preserve local checkpoint boundaries.", DependsOn = ["CLOUD-010"] }
+                ]
+            });
+        }
+
+        if (string.Equals(milestoneId, "cloud-provider-safety-boundary", StringComparison.OrdinalIgnoreCase))
+        {
+            return Task.FromResult(new RoadmapMilestoneDefinition
+            {
+                Id = "cloud-provider-safety-boundary",
+                Title = "InfraSentinel cloud provider safety boundary",
+                Tasks =
+                [
+                    new RoadmapTaskDefinition { Id = "CLOUD-BOUNDARY-001", Title = "Define provider operation contract", Description = "Define the local provider operation and scope contract." },
+                    new RoadmapTaskDefinition { Id = "CLOUD-BOUNDARY-002", Title = "Validate read-only allowlist", Description = "Evaluate explicitly allowed read-only operations.", DependsOn = ["CLOUD-BOUNDARY-001"] },
+                    new RoadmapTaskDefinition { Id = "CLOUD-BOUNDARY-003", Title = "Reject mutating and unknown operations", Description = "Reject mutation and unknown operation names by default.", DependsOn = ["CLOUD-BOUNDARY-002"] },
+                    new RoadmapTaskDefinition { Id = "CLOUD-BOUNDARY-004", Title = "Validate credential and scope safety", Description = "Validate credential references and account and region scope.", DependsOn = ["CLOUD-BOUNDARY-003"] },
+                    new RoadmapTaskDefinition { Id = "CLOUD-BOUNDARY-005", Title = "Produce deterministic safety artifact", Description = "Persist cloud-provider-safety-boundary.json without secrets.", DependsOn = ["CLOUD-BOUNDARY-004"] },
+                    new RoadmapTaskDefinition { Id = "CLOUD-BOUNDARY-006", Title = "Execute through EngineHost and checkpoint locally", Description = "Execute the offline provider through the EngineHost approval and checkpoint workflow.", DependsOn = ["CLOUD-BOUNDARY-005"] }
                 ]
             });
         }
