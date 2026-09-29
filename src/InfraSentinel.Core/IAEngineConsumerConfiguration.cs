@@ -81,6 +81,37 @@ public sealed record IAEngineConsumerConfiguration(string WorkspaceRoot)
     public CloudProviderSafetyArtifactWriter CreateCloudProviderSafetyArtifactWriter()
         => new(CloudProviderSafetyArtifactPath);
 
+    public AwsReadOnlyConfiguration CreateAwsReadOnlyConfiguration()
+        => AwsReadOnlyConfiguration.FromEnvironment();
+
+    public ICloudObservationProvider CreateAwsReadOnlyProvider(
+        AwsReadOnlyConfiguration configuration,
+        IAwsReadOnlyClient? client = null)
+    {
+        var policy = new AwsReadOnlyPolicy();
+        var sdkClient = client ?? new AwsSdkReadOnlyClient(policy);
+        return new AwsReadOnlyObservationProvider(configuration, sdkClient, new AwsIdentityVerifier(sdkClient), policy, new AwsReadOnlySnapshotNormalizer());
+    }
+
+    public ICloudObservationProvider CreateConfiguredCloudObservationProvider(
+        AwsReadOnlyConfiguration configuration,
+        IAwsReadOnlyClient? client = null)
+    {
+        if (configuration.LiveAwsEnabled && !configuration.DryRun)
+            return CreateAwsReadOnlyProvider(configuration, client);
+        return new SyntheticCloudObservationProvider(new CloudInfrastructureSnapshot(
+            "offline-empty",
+            "m18-1",
+            "synthetic-offline",
+            "offline",
+            configuration.AuthorizedRegions.FirstOrDefault() ?? "us-east-1",
+            "unknown",
+            DateTimeOffset.UnixEpoch,
+            CloudObservationSourceType.Synthetic,
+            [], [], [], [], [], [], [], [], [],
+            CloudCollectionStatus.Collected));
+    }
+
     public EngineCompositionPlan Composition => new(
         ProjectId,
         false,
@@ -283,6 +314,25 @@ public sealed class InfraSentinelMilestoneSource : IEngineMilestoneSource
                     new RoadmapTaskDefinition { Id = "CLOUD-BOUNDARY-004", Title = "Validate credential and scope safety", Description = "Validate credential references and account and region scope.", DependsOn = ["CLOUD-BOUNDARY-003"] },
                     new RoadmapTaskDefinition { Id = "CLOUD-BOUNDARY-005", Title = "Produce deterministic safety artifact", Description = "Persist cloud-provider-safety-boundary.json without secrets.", DependsOn = ["CLOUD-BOUNDARY-004"] },
                     new RoadmapTaskDefinition { Id = "CLOUD-BOUNDARY-006", Title = "Execute through EngineHost and checkpoint locally", Description = "Execute the offline provider through the EngineHost approval and checkpoint workflow.", DependsOn = ["CLOUD-BOUNDARY-005"] }
+                ]
+            });
+        }
+
+        if (string.Equals(milestoneId, "real-aws-read-only-observation", StringComparison.OrdinalIgnoreCase))
+        {
+            return Task.FromResult(new RoadmapMilestoneDefinition
+            {
+                Id = "real-aws-read-only-observation",
+                Title = "InfraSentinel real AWS read-only observation",
+                Tasks =
+                [
+                    new RoadmapTaskDefinition { Id = "AWS-001", Title = "Validate personal AWS identity and scope", Description = "Validate the explicit personal profile, account, identity, and authorized regions." },
+                    new RoadmapTaskDefinition { Id = "AWS-002", Title = "Execute read-only provider observation", Description = "Observe only the AWS SDK read-only allowlist with bounded timeout and retry.", DependsOn = ["AWS-001"] },
+                    new RoadmapTaskDefinition { Id = "AWS-003", Title = "Normalize cloud resources into neutral snapshot", Description = "Convert sanitized provider responses into domain-neutral resources.", DependsOn = ["AWS-002"] },
+                    new RoadmapTaskDefinition { Id = "AWS-004", Title = "Compare IaC expectations with AWS snapshot", Description = "Reuse the deterministic IaC/cloud comparator.", DependsOn = ["AWS-003"] },
+                    new RoadmapTaskDefinition { Id = "AWS-005", Title = "Produce deterministic evidence artifact", Description = "Persist sanitized evidence under .ai-runs-infrasentinel/.", DependsOn = ["AWS-004"] },
+                    new RoadmapTaskDefinition { Id = "AWS-006", Title = "Execute review and approval boundary", Description = "Use EngineHost review and explicit human approval.", DependsOn = ["AWS-005"] },
+                    new RoadmapTaskDefinition { Id = "AWS-007", Title = "Validate semantic local checkpoint", Description = "Allow the existing local checkpoint only after approval.", DependsOn = ["AWS-006"] }
                 ]
             });
         }
