@@ -43,7 +43,8 @@ public sealed record CloudResourceSnapshot(
     IReadOnlyList<string> Policies,
     IReadOnlyList<string> Dependencies,
     IReadOnlyList<string> Evidence,
-    IReadOnlyList<string> Limitations);
+    IReadOnlyList<string> Limitations,
+    IReadOnlyDictionary<string, string>? Properties = null);
 
 public sealed record CloudInfrastructureSnapshot(
     string SnapshotId,

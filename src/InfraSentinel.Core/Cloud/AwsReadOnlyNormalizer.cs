@@ -26,7 +26,8 @@ public sealed class AwsReadOnlySnapshotNormalizer : ICloudSnapshotNormalizer
                 resource.Properties.OrderBy(item => item.Key, StringComparer.Ordinal).Select(item => $"{item.Key}={item.Value}").ToArray(),
                 [],
                 [$"aws:{resource.ResourceType}:{resource.ResourceId}"],
-                resource.Limitations.Order(StringComparer.Ordinal).ToArray()))
+                resource.Limitations.Order(StringComparer.Ordinal).ToArray(),
+                resource.Properties.OrderBy(item => item.Key, StringComparer.Ordinal).ToDictionary(item => item.Key, item => item.Value, StringComparer.Ordinal)))
             .ToArray();
         var accountHash = Hash(identity.AccountId);
         var snapshotSeed = string.Join('|', resources.Select(resource => $"{resource.Region}:{resource.ResourceType}:{resource.ResourceId}"));

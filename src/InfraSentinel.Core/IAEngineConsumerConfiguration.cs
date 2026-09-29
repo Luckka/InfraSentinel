@@ -35,6 +35,7 @@ public sealed record IAEngineConsumerConfiguration(string WorkspaceRoot)
     public string TerraformStaticAnalysisArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "terraform-static-analysis.json");
     public string CloudObservationArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "cloud-observation.json");
     public string CloudProviderSafetyArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "cloud-provider-safety-boundary.json");
+    public string CloudFindingsArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "cloud-findings-gate.json");
 
     public InfraSentinelGitCheckpointCoordinator CreateCheckpointCoordinator(IGitService git, IProcessRunner processes)
         => new(git, processes, RunsDirectory);
@@ -80,6 +81,12 @@ public sealed record IAEngineConsumerConfiguration(string WorkspaceRoot)
 
     public CloudProviderSafetyArtifactWriter CreateCloudProviderSafetyArtifactWriter()
         => new(CloudProviderSafetyArtifactPath);
+
+    public CloudFindingsEvidenceWriter CreateCloudFindingsEvidenceWriter()
+        => new(CloudFindingsArtifactPath);
+
+    public CloudFindingsGate CreateCloudFindingsGate(IReadOnlySet<string>? authorizedRegions = null)
+        => new(authorizedRegions ?? new HashSet<string>(["us-east-1"], StringComparer.Ordinal));
 
     public AwsReadOnlyConfiguration CreateAwsReadOnlyConfiguration()
         => AwsReadOnlyConfiguration.FromEnvironment();
@@ -314,6 +321,28 @@ public sealed class InfraSentinelMilestoneSource : IEngineMilestoneSource
                     new RoadmapTaskDefinition { Id = "CLOUD-BOUNDARY-004", Title = "Validate credential and scope safety", Description = "Validate credential references and account and region scope.", DependsOn = ["CLOUD-BOUNDARY-003"] },
                     new RoadmapTaskDefinition { Id = "CLOUD-BOUNDARY-005", Title = "Produce deterministic safety artifact", Description = "Persist cloud-provider-safety-boundary.json without secrets.", DependsOn = ["CLOUD-BOUNDARY-004"] },
                     new RoadmapTaskDefinition { Id = "CLOUD-BOUNDARY-006", Title = "Execute through EngineHost and checkpoint locally", Description = "Execute the offline provider through the EngineHost approval and checkpoint workflow.", DependsOn = ["CLOUD-BOUNDARY-005"] }
+                ]
+            });
+        }
+
+        if (string.Equals(milestoneId, "cloud-security-findings-gate", StringComparison.OrdinalIgnoreCase))
+        {
+            return Task.FromResult(new RoadmapMilestoneDefinition
+            {
+                Id = "cloud-security-findings-gate",
+                Title = "InfraSentinel cloud security findings gate",
+                Tasks =
+                [
+                    new RoadmapTaskDefinition { Id = "FINDINGS-001", Title = "Load normalized AWS snapshot", Description = "Load the sanitized neutral M18 cloud snapshot." },
+                    new RoadmapTaskDefinition { Id = "FINDINGS-002", Title = "Evaluate security rules", Description = "Evaluate public exposure, encryption, ownership, classification, identity, and region rules.", DependsOn = ["FINDINGS-001"] },
+                    new RoadmapTaskDefinition { Id = "FINDINGS-003", Title = "Evaluate resilience rules", Description = "Evaluate backup, recovery, redundancy, dependency, retention, and availability evidence.", DependsOn = ["FINDINGS-002"] },
+                    new RoadmapTaskDefinition { Id = "FINDINGS-004", Title = "Evaluate observability rules", Description = "Evaluate logging, metrics, alarms, traceability, and operational evidence.", DependsOn = ["FINDINGS-003"] },
+                    new RoadmapTaskDefinition { Id = "FINDINGS-005", Title = "Evaluate cost and governance rules", Description = "Evaluate potentially paid services, tags, owners, purposes, and region policy.", DependsOn = ["FINDINGS-004"] },
+                    new RoadmapTaskDefinition { Id = "FINDINGS-006", Title = "Aggregate deterministic findings", Description = "Sort rule evaluations and findings into a stable result.", DependsOn = ["FINDINGS-005"] },
+                    new RoadmapTaskDefinition { Id = "FINDINGS-007", Title = "Execute independent review", Description = "Use the existing EngineHost review boundary.", DependsOn = ["FINDINGS-006"] },
+                    new RoadmapTaskDefinition { Id = "FINDINGS-008", Title = "Apply human approval boundary", Description = "Require explicit approval for critical, high, unknown, or blocked outcomes.", DependsOn = ["FINDINGS-007"] },
+                    new RoadmapTaskDefinition { Id = "FINDINGS-009", Title = "Persist evidence artifact", Description = "Write cloud-findings-gate.json without secrets or payloads.", DependsOn = ["FINDINGS-008"] },
+                    new RoadmapTaskDefinition { Id = "FINDINGS-010", Title = "Validate semantic local checkpoint", Description = "Use the existing local checkpoint coordinator only after approval.", DependsOn = ["FINDINGS-009"] }
                 ]
             });
         }
