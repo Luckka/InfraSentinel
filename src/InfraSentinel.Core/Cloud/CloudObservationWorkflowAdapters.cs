@@ -15,7 +15,7 @@ public sealed class CloudObservationReviewAgent(IReviewAgent inner, CloudObserva
     }
 }
 
-public sealed class CloudObservationCheckpointCoordinator(IGitCheckpointCoordinator inner, CloudObservationEvidence evidence, CloudObservationArtifactWriter writer) : IGitCheckpointCoordinator
+public sealed class CloudObservationCheckpointCoordinator(IGitCheckpointCoordinator inner, CloudObservationEvidence evidence, ICloudEvidenceWriter writer) : IGitCheckpointCoordinator
 {
     public async Task<GitCheckpointDecision> EvaluateAsync(GitCheckpointRequest request, CancellationToken cancellationToken = default)
     {

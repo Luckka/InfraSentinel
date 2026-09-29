@@ -12,7 +12,7 @@ public sealed class CloudObservationValidationRunner(
     string executionId,
     IacCloudSnapshotComparator comparator,
     CloudObservationEvidence evidence,
-    CloudObservationArtifactWriter writer,
+    ICloudEvidenceWriter writer,
     IMcpReadOnlyToolClient? mcpClient = null) : IValidationRunner
 {
     public async Task<IReadOnlyList<ValidationResult>> RunAsync(CancellationToken cancellationToken = default)

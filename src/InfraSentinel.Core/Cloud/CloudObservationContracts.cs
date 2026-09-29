@@ -5,6 +5,21 @@ public enum CloudCollectionStatus { Collected, Unknown, Failed, TimedOut }
 public enum CloudObservationStatus { Approved, HumanRequired, Unknown, Blocked, Failed }
 public enum CloudFindingSeverity { Low, Medium, High, Critical }
 
+public sealed record CloudObservedOperation(
+    string Operation,
+    string Region,
+    string Outcome,
+    int ResourceCount);
+
+public sealed record CloudObservationMetadata(
+    string AccountHash,
+    IReadOnlyList<string> Regions,
+    IReadOnlyList<string> Services,
+    IReadOnlyList<CloudObservedOperation> Operations,
+    IReadOnlyList<string> Failures,
+    int Retries,
+    bool TimedOut);
+
 public sealed record CloudObservationRequest(
     string ProjectId,
     string Environment,
@@ -28,7 +43,8 @@ public sealed record CloudResourceSnapshot(
     IReadOnlyList<string> Policies,
     IReadOnlyList<string> Dependencies,
     IReadOnlyList<string> Evidence,
-    IReadOnlyList<string> Limitations);
+    IReadOnlyList<string> Limitations,
+    IReadOnlyDictionary<string, string>? Properties = null);
 
 public sealed record CloudInfrastructureSnapshot(
     string SnapshotId,
@@ -55,7 +71,8 @@ public sealed record CloudObservationResult(
     CloudInfrastructureSnapshot? Snapshot,
     IReadOnlyList<string> Limitations,
     string Reason,
-    bool IsSynthetic);
+    bool IsSynthetic,
+    CloudObservationMetadata? Metadata = null);
 
 public interface ICloudSnapshotSource
 {

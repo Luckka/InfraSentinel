@@ -32,7 +32,8 @@ public sealed record CloudObservationArtifact(
     bool PushPerformed,
     bool MergePerformed,
     CloudObservationStatus Status,
-    string Reason);
+    string Reason,
+    CloudObservationMetadata? Metadata = null);
 
 public sealed class CloudObservationEvidence(
     string executionId,
@@ -79,11 +80,11 @@ public sealed class CloudObservationEvidence(
                 : evaluation?.Status ?? (observation?.Status == CloudCollectionStatus.Collected ? CloudObservationStatus.Unknown : CloudObservationStatus.Failed);
         var limitations = (observation?.Limitations ?? []).Concat(evaluation?.Limitations ?? []).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
         return new(executionId, projectId, milestoneId, snapshot?.SourceType ?? CloudObservationSourceType.Synthetic, snapshot?.Provider ?? "synthetic-cloud", snapshot?.SnapshotId ?? "none", snapshot?.Version ?? "0", iac,
-            snapshot?.Resources ?? [], iac?.Resources ?? [], findings, findings, findings.Select(finding => finding.Severity).Distinct().Order().ToArray(), limitations, calls.OrderBy(call => call.ToolName, StringComparer.Ordinal).ToArray(), retries, remediationCount, reviewStatus, approvalStatus, decision, result?.CommitSha, branch, result?.FilesIncluded ?? decision?.FilesEvaluated ?? [], result?.PushPerformed ?? false, result?.MergePerformed ?? false, status, result?.FailureReason ?? evaluation?.Reason ?? observation?.Reason ?? "No observation result.");
+            snapshot?.Resources ?? [], iac?.Resources ?? [], findings, findings, findings.Select(finding => finding.Severity).Distinct().Order().ToArray(), limitations, calls.OrderBy(call => call.ToolName, StringComparer.Ordinal).ToArray(), retries, remediationCount, reviewStatus, approvalStatus, decision, result?.CommitSha, branch, result?.FilesIncluded ?? decision?.FilesEvaluated ?? [], result?.PushPerformed ?? false, result?.MergePerformed ?? false, status, result?.FailureReason ?? evaluation?.Reason ?? observation?.Reason ?? "No observation result.", observation?.Metadata);
     }
 }
 
-public sealed class CloudObservationArtifactWriter(string artifactPath)
+public sealed class CloudObservationArtifactWriter(string artifactPath) : ICloudEvidenceWriter
 {
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase, Converters = { new JsonStringEnumConverter() } };
     public async Task WriteAsync(CloudObservationEvidence evidence, CancellationToken cancellationToken = default)
