@@ -8,6 +8,7 @@ using InfraSentinel.Core.Adapters;
 using InfraSentinel.Core.Cloud;
 using InfraSentinel.Core.Integration;
 using InfraSentinel.Core.IaC;
+using InfraSentinel.Core.Findings;
 using InfraSentinel.Core.Observability;
 using InfraSentinel.Core.Resilience;
 using InfraSentinel.Core.Security;
@@ -36,6 +37,7 @@ public sealed record IAEngineConsumerConfiguration(string WorkspaceRoot)
     public string CloudObservationArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "cloud-observation.json");
     public string CloudProviderSafetyArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "cloud-provider-safety-boundary.json");
     public string CloudFindingsArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "cloud-findings-gate.json");
+    public string FindingCatalogArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "finding-catalog.json");
 
     public InfraSentinelGitCheckpointCoordinator CreateCheckpointCoordinator(IGitService git, IProcessRunner processes)
         => new(git, processes, RunsDirectory);
@@ -84,6 +86,12 @@ public sealed record IAEngineConsumerConfiguration(string WorkspaceRoot)
 
     public CloudFindingsEvidenceWriter CreateCloudFindingsEvidenceWriter()
         => new(CloudFindingsArtifactPath);
+
+    public FindingCatalog CreateFindingCatalog(string executionId, string milestoneId)
+        => new(executionId, ProjectId, milestoneId);
+
+    public FindingCatalogWriter CreateFindingCatalogWriter()
+        => new(FindingCatalogArtifactPath);
 
     public CloudFindingsGate CreateCloudFindingsGate(IReadOnlySet<string>? authorizedRegions = null)
         => new(authorizedRegions ?? new HashSet<string>(["us-east-1"], StringComparer.Ordinal));
