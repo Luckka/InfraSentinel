@@ -1,5 +1,6 @@
 using IAEngine.Core.Recovery;
 using InfraSentinel.Core;
+using Xunit;
 
 namespace InfraSentinel.Core.Tests;
 
