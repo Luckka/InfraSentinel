@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using IAEngine.Core.Recovery;
 using IAEngine.Core.Git;
 using InfraSentinel.Core;
 using InfraSentinel.Core.Integration;
@@ -118,6 +119,27 @@ public sealed class CheckpointIntegrationTests
     }
 
     [Fact]
+    public async Task SentinelEngineHostUsesGenericRecoveryServiceAndPreservesExecutionIdentity()
+    {
+        using var repository = GitRepository.Create();
+        var configuration = new IAEngineConsumerConfiguration(repository.Root);
+        var processes = new ProcessRunner();
+        var git = new GitService(processes, repository.Root, new GitOptions());
+        var host = CreateHost(configuration, git, processes);
+        var key = new ExecutionKey("infra-sentinel", "sentinel-engine-controlled-checkpoint", "task-1", "execution-1");
+
+        Assert.True(host.RecoveryConfigured);
+        await host.StartRecoveryAsync(key);
+        var attempt = await host.StartRecoveryAttemptAsync(key, RecoveryReason.Crash);
+        await host.RecordRecoveryAttemptAsync(key, attempt with { Status = RecoveryStatus.Failed, EndedAt = DateTimeOffset.UtcNow });
+        var recovered = await host.RecoverAsync(key, RecoveryReason.Crash);
+
+        Assert.Equal(RecoveryStatus.Recovered, recovered.Status);
+        Assert.Equal(key.Value, recovered.ExecutionKey);
+        Assert.Equal(2, (await host.GetRecoveryAttemptsAsync(key)).Count);
+    }
+
+    [Fact]
     public void SentinelConsumesCoreAndNotTheOnlineOsAdapter()
     {
         var references = typeof(InfraSentinelGitCheckpointCoordinator).Assembly.GetReferencedAssemblies();
@@ -158,7 +180,8 @@ public sealed class CheckpointIntegrationTests
             MilestoneSource = new InfraSentinelMilestoneSource(),
             MilestoneStateDirectory = configuration.StateDirectory,
             CheckpointCoordinator = configuration.CreateCheckpointCoordinator(git, processes),
-            CheckpointRequestSource = requestSource
+            CheckpointRequestSource = requestSource,
+            RecoveryService = configuration.CreateRecoveryService()
         });
     }
 
