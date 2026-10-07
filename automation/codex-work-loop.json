@@ -1,0 +1,22 @@
+{
+  "projectId": "infrasentinel",
+  "projectRoot": "/Users/luckadenubilasevero/Documents/Projects/InfraSentinel",
+  "repository": "InfraSentinel",
+  "roadmapPath": "docs/ROADMAP.md",
+  "statusPath": "docs/STATUS.md",
+  "reportPath": "docs/status/STATUS-infrasentinel",
+  "protectedBranches": ["main"],
+  "allowedBranchPrefixes": ["feature/", "fix/", "docs/", "chore/"],
+  "buildCommand": "DOTNET_ROOT=/opt/homebrew/Cellar/dotnet/10.0.301/libexec PATH=/opt/homebrew/bin:/usr/bin:/bin dotnet build InfraSentinel.sln",
+  "testCommand": "DOTNET_ROOT=/opt/homebrew/Cellar/dotnet/10.0.301/libexec PATH=/opt/homebrew/bin:/usr/bin:/bin dotnet test InfraSentinel.sln",
+  "diffCommand": "git diff --check",
+  "semanticCommitPolicy": "Conventional Commits",
+  "suggestedCommit": "chore: configure local Codex work loop",
+  "milestoneHint": "M23",
+  "maxIterations": 3,
+  "maxFilesPerIteration": 12,
+  "maxCommitsPerIteration": 1,
+  "allowAws": false,
+  "allowExternalInfrastructure": false,
+  "requireSemanticCommits": true
+}
