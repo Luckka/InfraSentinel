@@ -3,6 +3,7 @@ using OnlineOs.AiOrchestrator.Abstractions;
 using OnlineOs.AiOrchestrator.Hosting;
 using OnlineOs.AiOrchestrator.Models;
 using IAEngine.Core.Git;
+using IAEngine.Core.Recovery;
 using InfraSentinel.Core.Architecture;
 using InfraSentinel.Core.Adapters;
 using InfraSentinel.Core.Cloud;
@@ -92,6 +93,9 @@ public sealed record IAEngineConsumerConfiguration(string WorkspaceRoot)
 
     public FindingCatalogWriter CreateFindingCatalogWriter()
         => new(FindingCatalogArtifactPath);
+
+    public IExecutionRecoveryService CreateRecoveryService()
+        => new ExecutionRecoveryService(new FileRecoveryStore(WorkspaceRoot, StateDirectory));
 
     public CloudFindingsGate CreateCloudFindingsGate(IReadOnlySet<string>? authorizedRegions = null)
         => new(authorizedRegions ?? new HashSet<string>(["us-east-1"], StringComparer.Ordinal));
