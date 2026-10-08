@@ -1,10 +1,10 @@
 # Recovery Runbook
 
-## Current M20 status
+## Current status
 
-Recovery validation is blocked by `ENGINE_CONTRACT_GAP`. Do not attempt to
-recover a failed milestone by editing `roadmap-state.json`, replaying private
-runner methods, or creating a Sentinel-specific executor. Do not run AWS.
+The generic IAEngine transition is available at revision `9d905f3`. Use the
+public EngineHost recovery API; do not edit `roadmap-state.json`, replay private
+runner methods, or create a Sentinel-specific executor. Do not run AWS.
 
 ## Intended workflow after the generic contract is available
 
@@ -40,10 +40,10 @@ runner methods, or creating a Sentinel-specific executor. Do not run AWS.
 - `Abandoned`: requires a new explicit execution/attempt; do not silently
   resurrect the old one.
 
-## Current limitation
+## Limits of this validation
 
-The current EngineHost/RunStore contract does not provide all of these
-guarantees. In particular, terminal failed task runs are not discoverable by
-`ContinueMilestoneAsync`, and HumanRequired continuation has no generic
-milestone approval token. Stop and report `ENGINE_CONTRACT_GAP` until that
-contract is reviewed and implemented in IAEngine.
+The M24 integration validates a local deterministic HumanRequired recovery via
+`RecoverMilestoneAsync`, original run identity, preserved artifacts, and no
+premature checkpoint. It does not claim timeout, cancellation, process-crash,
+live-provider, AWS, or OnlineOS behavior. Those scenarios require separate
+deterministic fixtures and must remain local/opt-in.
