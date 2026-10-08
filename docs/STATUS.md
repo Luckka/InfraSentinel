@@ -1,18 +1,19 @@
 # InfraSentinel status
 
 AUDIT_COMPLETED=true
-ROADMAP_RECONSTRUCTION_REQUIRED=true
+ROADMAP_RECONSTRUCTION_REQUIRED=false
 
 - Repository branch: `feature/m24-terminal-recovery-integration`
 - Audited commit before implementation: `1aa672c`
 - Current milestone: M24 — Validate M22 terminal recovery in EngineHost
-- Current milestone state: PARTIALLY_VALIDATED — HumanRequired terminal recovery is proven locally
-- Latest confirmed milestone: M21 — Finding catalog projection
-- Latest incomplete milestone: M22 — Generic recovery integration
+- Current milestone state: VALIDATED_LOCALLY — terminal recovery, timeout,
+  cancellation, crash/restart, and idempotence are proven with EngineHost
+- Latest confirmed milestone: M24 — terminal recovery integration
+- Latest incomplete milestone: M25 — consumer Work Loop task derivation
 - M23 state: PARTIALLY_COMPLETED; the consumer work-loop configuration exists,
   but the reusable Markdown parser cannot derive a safe executable next task.
 - IAEngine branch: `feature/generic-recovery-transition`
-- IAEngine commit: `9d905f3`
+- IAEngine commit: recovery-idempotence revision on the linked feature branch
 - IAEngine working tree: clean and pushed for review
 - Recovery state: consumer-namespaced under `.ai-state-infrasentinel`
 - Target framework: `net10.0`
@@ -25,9 +26,8 @@ ROADMAP_RECONSTRUCTION_REQUIRED=true
 - CORPORATE_PROFILE_ACCESSED=false
 - ONLINEOS_ACCESSED=false
 - IAENGINE_MODIFIED=true — generic fix is isolated in IAEngine branch/PR
-- ENGINE_CONTRACT_GAP=false for the validated HumanRequired path
+- ENGINE_CONTRACT_GAP=false for the validated recovery paths
 - HUMAN_REQUIRED=true — independent review is still required before merge
 - STOP_REASON=NONE
-- UNVALIDATED=timeout,cancellation,process-crash,live-provider,AWS,OnlineOS
-- NEXT_DECISION=independent review of both PRs; do not claim full M24 completion
-  until the explicitly listed recovery scenarios have deterministic coverage
+- UNVALIDATED=live-provider,AWS,OnlineOS
+- NEXT_DECISION=independent review of both PRs; M24 local validation is complete

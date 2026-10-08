@@ -12,7 +12,7 @@ The missing transition belonged to IAEngine's generic MilestoneRunner contract.
 
 ## Decision
 
-InfraSentinel consumes the reviewed IAEngine revision `9d905f3` through its
+InfraSentinel consumes the reviewed IAEngine revision `ddb226e` through its
 existing local `ProjectReference`. It records an approval for the exact generic
 execution key, then invokes `EngineHost.RecoverMilestoneAsync`. No Sentinel
 executor, state machine, or copied IAEngine code is added.

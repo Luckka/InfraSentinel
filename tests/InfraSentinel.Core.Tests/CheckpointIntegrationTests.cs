@@ -173,6 +173,99 @@ public sealed class CheckpointIntegrationTests
         Assert.True(File.Exists(Path.Combine(repository.Root, configuration.RunsDirectory, runId, "validation-1.json")));
         Assert.True(File.Exists(Path.Combine(repository.Root, configuration.RunsDirectory, runId, "validation-2.json")));
         Assert.Null(repository.ReadCommitSubject());
+
+        var repeatedRecovery = await host.RecoverMilestoneAsync(key, RecoveryReason.HumanRequired);
+        Assert.Equal(MilestoneRuntimeStatus.CompleteAwaitingApproval, repeatedRecovery.Status);
+        Assert.Equal(2, (await host.GetRecoveryAttemptsAsync(key)).Count);
+
+        var approved = await host.ApproveMilestoneAsync("sentinel-engine-controlled-checkpoint");
+        var repeatedApproval = await host.ApproveMilestoneAsync("sentinel-engine-controlled-checkpoint");
+        Assert.Equal(MilestoneRuntimeStatus.Approved, approved.Status);
+        Assert.Equal(MilestoneRuntimeStatus.Approved, repeatedApproval.Status);
+        Assert.Equal("test: validate engine-controlled sentinel checkpoint", repository.ReadCommitSubject());
+    }
+
+    [Fact]
+    public async Task TimeoutRecoveryReopensThroughEngineHostAndPreservesCompletedTasks()
+    {
+        using var repository = GitRepository.Create();
+        var configuration = new IAEngineConsumerConfiguration(repository.Root);
+        var processes = new ProcessRunner();
+        var git = new GitService(processes, repository.Root, new GitOptions());
+        var host = CreateHost(configuration, git, processes, new AlwaysTimeoutValidation(), validationRemediationCycles: 0);
+
+        var blocked = await host.RunMilestoneAsync("sentinel-engine-controlled-checkpoint");
+        var runtime = await new RoadmapStateStore(repository.Root, configuration.StateDirectory).LoadAsync();
+        var runId = runtime!.Tasks["CHECKPOINT-001"].RunId!;
+        var key = new ExecutionKey("infra-sentinel", "sentinel-engine-controlled-checkpoint", "CHECKPOINT-001", runId);
+
+        Assert.Equal(MilestoneRuntimeStatus.HumanRequired, blocked.Status);
+        var restartedHost = CreateHost(configuration, git, processes);
+        await RecordFailedRecoveryAsync(restartedHost, key, RecoveryReason.Timeout, "timeout recovery");
+        var recovered = await restartedHost.RecoverMilestoneAsync(key, RecoveryReason.Timeout);
+
+        Assert.Equal(MilestoneRuntimeStatus.CompleteAwaitingApproval, recovered.Status);
+        Assert.Equal(6, recovered.CompletedTasks);
+        Assert.Equal(2, (await restartedHost.GetRecoveryAttemptsAsync(key)).Count);
+        Assert.True(Directory.EnumerateFiles(Path.Combine(repository.Root, configuration.RunsDirectory, runId), "validation-*.json").Any());
+        Assert.Null(repository.ReadCommitSubject());
+    }
+
+    [Fact]
+    public async Task CancellationRecoveryContinuesPersistedActiveRunAfterHostRestart()
+    {
+        using var repository = GitRepository.Create();
+        var configuration = new IAEngineConsumerConfiguration(repository.Root);
+        var processes = new ProcessRunner();
+        var git = new GitService(processes, repository.Root, new GitOptions());
+        using var cancellation = new CancellationTokenSource();
+        var interruptedHost = CreateHost(configuration, git, processes, implementationOverride: new CancellingImplementation(cancellation));
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => interruptedHost.RunMilestoneAsync("sentinel-engine-controlled-checkpoint", cancellation.Token));
+        var runtime = await new RoadmapStateStore(repository.Root, configuration.StateDirectory).LoadAsync();
+        var runId = runtime!.Tasks["CHECKPOINT-001"].RunId!;
+        var key = new ExecutionKey("infra-sentinel", "sentinel-engine-controlled-checkpoint", "CHECKPOINT-001", runId);
+
+        var restartedHost = CreateHost(configuration, git, processes);
+        await RecordFailedRecoveryAsync(restartedHost, key, RecoveryReason.Cancellation, "cancelled host");
+        var recovered = await restartedHost.RecoverMilestoneAsync(key, RecoveryReason.Cancellation);
+
+        Assert.Equal(MilestoneRuntimeStatus.CompleteAwaitingApproval, recovered.Status);
+        Assert.Equal(6, recovered.CompletedTasks);
+        Assert.Equal(2, (await restartedHost.GetRecoveryAttemptsAsync(key)).Count);
+        Assert.Null(repository.ReadCommitSubject());
+    }
+
+    [Fact]
+    public async Task CrashRecoveryReopensTerminalRunAfterHostRestart()
+    {
+        using var repository = GitRepository.Create();
+        var configuration = new IAEngineConsumerConfiguration(repository.Root);
+        var processes = new ProcessRunner();
+        var git = new GitService(processes, repository.Root, new GitOptions());
+        var crashedHost = CreateHost(configuration, git, processes, implementationOverride: new CrashingImplementation());
+
+        var failed = await crashedHost.RunMilestoneAsync("sentinel-engine-controlled-checkpoint");
+        var runtime = await new RoadmapStateStore(repository.Root, configuration.StateDirectory).LoadAsync();
+        var runId = runtime!.Tasks["CHECKPOINT-001"].RunId!;
+        var key = new ExecutionKey("infra-sentinel", "sentinel-engine-controlled-checkpoint", "CHECKPOINT-001", runId);
+
+        Assert.Equal(MilestoneRuntimeStatus.Failed, failed.Status);
+        var restartedHost = CreateHost(configuration, git, processes);
+        await RecordFailedRecoveryAsync(restartedHost, key, RecoveryReason.Crash, "simulated process crash");
+        var recovered = await restartedHost.RecoverMilestoneAsync(key, RecoveryReason.Crash);
+
+        Assert.Equal(MilestoneRuntimeStatus.CompleteAwaitingApproval, recovered.Status);
+        Assert.Equal(6, recovered.CompletedTasks);
+        Assert.Equal(2, (await restartedHost.GetRecoveryAttemptsAsync(key)).Count);
+        Assert.Null(repository.ReadCommitSubject());
+    }
+
+    private static async Task RecordFailedRecoveryAsync(EngineHost host, ExecutionKey key, RecoveryReason reason, string detail)
+    {
+        await host.StartRecoveryAsync(key);
+        var attempt = await host.StartRecoveryAttemptAsync(key, reason);
+        await host.RecordRecoveryAttemptAsync(key, attempt with { Status = RecoveryStatus.Failed, EndedAt = DateTimeOffset.UtcNow, SanitizedError = detail });
     }
 
     [Fact]
@@ -189,7 +282,8 @@ public sealed class CheckpointIntegrationTests
         IGitService git,
         IProcessRunner processes,
         IValidationRunner? validationOverride = null,
-        int validationRemediationCycles = 5)
+        int validationRemediationCycles = 5,
+        IImplementationAgent? implementationOverride = null)
     {
         var safeFixture = new SyntheticInfrastructureFixture([new("checkpoint-resource", "document")], ["minimum-policy"], ["minimum-policy"]);
         var validation = validationOverride ?? new InfrastructureValidationRunner(new DeterministicInfrastructureValidator(), safeFixture);
@@ -206,7 +300,7 @@ public sealed class CheckpointIntegrationTests
             Components = new("local-router", "local-implementation", "local-review", "validation"),
             RegisterComponents = builder => builder
                 .RegisterProvider<ITaskRouter>("local-router", () => new LocalRouter())
-                .RegisterProvider<IImplementationAgent>("local-implementation", () => new LocalImplementation())
+                .RegisterProvider<IImplementationAgent>("local-implementation", () => implementationOverride ?? new LocalImplementation())
                 .RegisterProvider<IReviewAgent>("local-review", () => new LocalReview())
                 .RegisterValidator<IValidationRunner>("local-validator", () => validation)
                 .RegisterCapability<IValidationRunner>("validation", () => validation)
@@ -285,6 +379,38 @@ public sealed class CheckpointIntegrationTests
                 new("CheckpointRecovery", true, new ProcessResult("local-recovery-validation", passed ? 0 : 1, "", "", TimeSpan.Zero), passed ? ValidationStatus.Pass : ValidationStatus.Fail)
             ]);
         }
+    }
+
+    private sealed class AlwaysTimeoutValidation : IValidationRunner
+    {
+        public Task<IReadOnlyList<ValidationResult>> RunAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<ValidationResult>>([
+                new("CheckpointTimeout", true, new ProcessResult("local-timeout-validation", 124, "", "timed out", TimeSpan.Zero, true), ValidationStatus.Fail)
+            ]);
+        }
+    }
+
+    private sealed class CancellingImplementation(CancellationTokenSource source) : IImplementationAgent
+    {
+        public Task<ImplementationResult> ImplementAsync(DevelopmentTask task, RoutingResult route, EngineeringProfile engineering, CancellationToken cancellationToken = default)
+        {
+            source.Cancel();
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(new ImplementationResult(true, "unexpected", []));
+        }
+
+        public Task<ImplementationResult> RemediateAsync(DevelopmentTask task, EngineeringProfile engineering, IReadOnlyList<ValidationResult> validation, ReviewResult? review, CancellationToken cancellationToken = default, int contextReductionAttempt = 0)
+            => Task.FromResult(new ImplementationResult(true, "local recovery implementation", []));
+    }
+
+    private sealed class CrashingImplementation : IImplementationAgent
+    {
+        public Task<ImplementationResult> ImplementAsync(DevelopmentTask task, RoutingResult route, EngineeringProfile engineering, CancellationToken cancellationToken = default)
+            => throw new InvalidOperationException("simulated process crash");
+
+        public Task<ImplementationResult> RemediateAsync(DevelopmentTask task, EngineeringProfile engineering, IReadOnlyList<ValidationResult> validation, ReviewResult? review, CancellationToken cancellationToken = default, int contextReductionAttempt = 0)
+            => Task.FromResult(new ImplementationResult(true, "local recovery implementation", []));
     }
 
     private sealed class GitRepository : IDisposable
