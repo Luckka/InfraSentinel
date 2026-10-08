@@ -140,6 +140,42 @@ public sealed class CheckpointIntegrationTests
     }
 
     [Fact]
+    public async Task SentinelEngineHostReopensHumanRequiredMilestoneAfterExplicitApproval()
+    {
+        using var repository = GitRepository.Create();
+        var configuration = new IAEngineConsumerConfiguration(repository.Root);
+        var processes = new ProcessRunner();
+        var git = new GitService(processes, repository.Root, new GitOptions());
+        var validation = new RecoveringValidation();
+        var host = CreateHost(configuration, git, processes, validation, validationRemediationCycles: 0);
+
+        var blocked = await host.RunMilestoneAsync("sentinel-engine-controlled-checkpoint");
+        var runtime = await new RoadmapStateStore(repository.Root, configuration.StateDirectory).LoadAsync();
+        var runId = runtime!.Tasks["CHECKPOINT-001"].RunId!;
+        var key = new ExecutionKey("infra-sentinel", "sentinel-engine-controlled-checkpoint", "CHECKPOINT-001", runId);
+
+        Assert.Equal(MilestoneRuntimeStatus.HumanRequired, blocked.Status);
+        await host.StartRecoveryAsync(key);
+        var attempt = await host.StartRecoveryAttemptAsync(key, RecoveryReason.HumanRequired);
+        await host.RecordRecoveryAttemptAsync(key, attempt with { Status = RecoveryStatus.HumanRequired, ApprovalRequired = true });
+        await Assert.ThrowsAsync<InvalidOperationException>(() => host.RecoverMilestoneAsync(key, RecoveryReason.HumanRequired));
+
+        await host.ApproveRecoveryAsync(key, "approval-m24", "Approved local deterministic recovery.");
+        var recovered = await host.RecoverMilestoneAsync(key, RecoveryReason.HumanRequired);
+        var attempts = await host.GetRecoveryAttemptsAsync(key);
+        var recoveredRuntime = await new RoadmapStateStore(repository.Root, configuration.StateDirectory).LoadAsync();
+
+        Assert.Equal(MilestoneRuntimeStatus.CompleteAwaitingApproval, recovered.Status);
+        Assert.Equal(6, recovered.CompletedTasks);
+        Assert.Equal(2, attempts.Count);
+        Assert.Equal(runId, recoveredRuntime!.Tasks["CHECKPOINT-001"].RunId);
+        Assert.Equal(MilestoneTaskStatus.Done, recoveredRuntime.Tasks["CHECKPOINT-001"].Status);
+        Assert.True(File.Exists(Path.Combine(repository.Root, configuration.RunsDirectory, runId, "validation-1.json")));
+        Assert.True(File.Exists(Path.Combine(repository.Root, configuration.RunsDirectory, runId, "validation-2.json")));
+        Assert.Null(repository.ReadCommitSubject());
+    }
+
+    [Fact]
     public void SentinelConsumesCoreAndNotTheOnlineOsAdapter()
     {
         var references = typeof(InfraSentinelGitCheckpointCoordinator).Assembly.GetReferencedAssemblies();
