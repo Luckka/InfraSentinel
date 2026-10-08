@@ -11,7 +11,8 @@ project, milestone, task and execution identity. Artifact and checkpoint
 identities are recorded through the generic service before any future external
 operation is authorized.
 
-M22 does not claim terminal milestone continuation until the IAEngine workflow
-integration can reopen a persisted terminal run through the existing
-`MilestoneRunner` and `Orchestrator`. Rewind remains read-only contextual
-retrieval and is never used to resume execution.
+M22 uses `EngineHost.RecoverMilestoneAsync` for terminal continuation through
+the existing `MilestoneRunner` and `Orchestrator`. InfraSentinel supplies the
+consumer-owned `FileRecoveryStore` and persisted run identity; it does not add
+a runner or state machine. Rewind remains read-only contextual retrieval and
+is never used to resume execution.
