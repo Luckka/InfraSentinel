@@ -1,7 +1,7 @@
 {
   "consumer": "InfraSentinel",
   "engineRepository": "../AI-ENGINEERING-ENGINE",
-  "engineRevision": "845197f",
+  "engineRevision": "ddb226e",
   "referenceMode": "local-core-project-reference",
   "projectProperty": "IAEngineCoreProject",
   "projectPath": "../AI-ENGINEERING-ENGINE/src/IAEngine.Core/IAEngine.Core.csproj",

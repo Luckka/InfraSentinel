@@ -26,7 +26,7 @@ namespace InfraSentinel.Core;
 public sealed record IAEngineConsumerConfiguration(string WorkspaceRoot)
 {
     public const string ProjectId = "infra-sentinel";
-    public const string EngineRevision = "501d0b9";
+    public const string EngineRevision = "ddb226e";
     public string RunsDirectory => ".ai-runs-infrasentinel";
     public string StateDirectory => ".ai-state-infrasentinel";
     public string ArchitectureDefenseArtifactPath => Path.Combine(WorkspaceRoot, RunsDirectory, "architecture-defense.json");

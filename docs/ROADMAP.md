@@ -1,6 +1,6 @@
 # InfraSentinel roadmap
 
-ROADMAP_RECONSTRUCTION_REQUIRED=true
+ROADMAP_RECONSTRUCTION_REQUIRED=false
 
 This roadmap was reconstructed on 2026-10-07 from the current repository,
 tests, Git history, branch topology and the read-only IAEngine checkout. A
@@ -45,20 +45,19 @@ requires implemented code, relevant tests and a successful local .NET 10 build.
 
 ## Next milestones
 
-### M24 — Validate M22 terminal recovery in EngineHost — BLOCKED
+### M24 — Validate M22 terminal recovery in EngineHost — COMPLETED LOCALLY
 
-Objective: add one deterministic consumer integration test that creates a local
-HumanRequired milestone run, records explicit recovery approval through the
-generic IAEngine contract, invokes `EngineHost.RecoverMilestoneAsync`, and proves
-that the existing milestone runner resumes without a Sentinel state machine.
+Objective: validate deterministic terminal, timeout, cancellation, crash/restart,
+HumanRequired, and idempotent recovery through `EngineHost`, proving that the
+existing milestone runner resumes without a Sentinel state machine.
 
 Problem: M22 documentation says terminal continuation is integrated, but the
 InfraSentinel test suite currently proves only recovery metadata and a generic
 recovery attempt, not the terminal EngineHost reopen path.
 
-Scope: one test in `CheckpointIntegrationTests.cs`, roadmap/status/prompt
-evidence, and the required local validation. Use the existing synthetic
-checkpoint milestone and local Git repository helpers.
+Scope: local integration tests in `CheckpointIntegrationTests.cs`, generic host
+idempotence, roadmap/status/runbook evidence, and local validation. Use the
+existing synthetic checkpoint milestone and local Git repository helpers.
 
 Out of scope: IAEngine changes, new runtime contracts, new state machines,
 AWS/AWS CLI, Terraform, MCP, providers, OnlineOS, push/merge automation inside
@@ -68,15 +67,16 @@ Approval criteria: the test proves explicit recovery approval is required, the
 EngineHost recovery API resumes the persisted run, the milestone reaches the
 expected local terminal state, and the full build/test/diff checks pass.
 
-Current result: blocked during the safe local probe. The consumer reached
-`EngineHost.RecoverMilestoneAsync` and the validation fixture passed after
-approval, but the generic `MilestoneRunner` returned `HumanRequired` because it
-does not restore milestone runtime state to `Running` before driving the
-recovered task. This is `ENGINE_CONTRACT_GAP`; no consumer workaround is
-permitted. A reviewed IAEngine change is required before M24 can become
-complete.
+Current result: the IAEngine recovery-idempotence revision restores persisted
+milestone state to `Running`; consumer tests reach `CompleteAwaitingApproval`
+after timeout, cancellation, crash/restart, and explicit HumanRequired approval.
+They prove original run identity, preserved validation artifacts, no task replay,
+stable recovery-attempt counts, repeated approval without a second commit, and
+no premature checkpoint. Live-provider, AWS, and OnlineOS scenarios remain out
+of scope.
 
-Expected commit: `test: validate terminal recovery through EngineHost`.
+Commits: `test: validate terminal recovery through EngineHost` and the generic
+IAEngine recovery-idempotence fix.
 
 ### M25 — Repair consumer Work Loop task derivation — BLOCKED
 
