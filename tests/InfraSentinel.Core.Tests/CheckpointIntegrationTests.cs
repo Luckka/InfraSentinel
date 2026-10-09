@@ -183,6 +183,7 @@ public sealed class CheckpointIntegrationTests
         Assert.Equal(MilestoneRuntimeStatus.Approved, approved.Status);
         Assert.Equal(MilestoneRuntimeStatus.Approved, repeatedApproval.Status);
         Assert.Equal("test: validate engine-controlled sentinel checkpoint", repository.ReadCommitSubject());
+        Assert.Equal(2, repository.CountCommits());
     }
 
     [Fact]
@@ -440,6 +441,9 @@ public sealed class CheckpointIntegrationTests
                 ? result.StandardOutput.Trim()
                 : null;
         }
+
+        public int CountCommits()
+            => int.Parse(Run(Root, ["rev-list", "--count", "HEAD"], true).StandardOutput.Trim());
 
         public void Dispose() => Directory.Delete(Root, recursive: true);
 

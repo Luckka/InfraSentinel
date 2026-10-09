@@ -21,5 +21,7 @@ executor, state machine, or copied IAEngine code is added.
 
 The consumer preserves the existing checkpoint coordinator and sanitized local
 artifacts. Recovery can resume the persisted milestone while keeping the
-original task run identity. AWS, OnlineOS, Terraform execution, MCP, push, and
-merge remain outside this validation.
+original task run identity. Generic recovery identities deduplicate repeated
+artifacts and checkpoints, while repeated approval does not create a second
+commit. AWS, OnlineOS, Terraform execution, MCP, push, and merge remain outside
+this validation.

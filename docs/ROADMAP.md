@@ -71,9 +71,10 @@ Current result: the IAEngine recovery-idempotence revision restores persisted
 milestone state to `Running`; consumer tests reach `CompleteAwaitingApproval`
 after timeout, cancellation, crash/restart, and explicit HumanRequired approval.
 They prove original run identity, preserved validation artifacts, no task replay,
-stable recovery-attempt counts, repeated approval without a second commit, and
-no premature checkpoint. Live-provider, AWS, and OnlineOS scenarios remain out
-of scope.
+stable recovery-attempt counts, repeated approval without a second commit,
+duplicate artifact/checkpoint suppression, and no premature checkpoint. The
+current suite reports 148 passed and 1 skipped opt-in AWS test. Live-provider,
+AWS, and OnlineOS scenarios remain out of scope.
 
 Commits: `test: validate terminal recovery through EngineHost` and the generic
 IAEngine recovery-idempotence fix.

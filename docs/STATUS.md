@@ -19,7 +19,8 @@ ROADMAP_RECONSTRUCTION_REQUIRED=false
 - Target framework: `net10.0`
 - SDK used for validation: `.NET SDK 10.0.301`
 - Build after implementation: PASSED — .NET SDK 10.0.301
-- Tests after implementation: PASSED — 144 passed, 1 skipped opt-in AWS live test
+- Tests after implementation: PASSED — 148 passed, 1 skipped opt-in AWS live test
+- Idempotence evidence: duplicate recovery artifact/checkpoint identities are deduplicated; repeated milestone approval creates one local commit
 - AWS_ACCESSED=false
 - AWS_PROFILE_USED=none
 - AWS_MUTATIONS_EXECUTED=false

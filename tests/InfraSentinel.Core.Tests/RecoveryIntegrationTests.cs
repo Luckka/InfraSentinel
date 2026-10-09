@@ -43,4 +43,23 @@ public sealed class RecoveryIntegrationTests
         }
         finally { root.Delete(true); }
     }
+
+    [Fact]
+    public async Task DuplicateArtifactDoesNotCreateSecondRecord()
+    {
+        var root = Directory.CreateTempSubdirectory("infrasentinel-recovery-");
+        try
+        {
+            var configuration = new IAEngineConsumerConfiguration(root.FullName);
+            var key = new ExecutionKey("infra-sentinel", "m22", "task-1", "execution-1");
+            var service = configuration.CreateRecoveryService();
+            await service.StartAsync(key);
+            var artifact = new RecoveryArtifactIdentity("artifact-1", "validation.json", "hash");
+            await service.RecordArtifactAsync(key, artifact);
+            var result = await service.RecordArtifactAsync(key, artifact);
+
+            Assert.Single(result.Artifacts);
+        }
+        finally { root.Delete(true); }
+    }
 }
